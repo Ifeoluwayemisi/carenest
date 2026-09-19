@@ -30,15 +30,20 @@ root at `carenest/`.
 | Value | Setting |
 | --- | --- |
 | **Root Directory** | `carenest` (if the repo root is the folder *containing* carenest) or `.` (if `carenest/` is itself the repo root) |
-| **Build Command** | `npm ci && npm run build` |
+| **Build Command** | `npm ci && npm run build --workspace apps/api` |
 | **Start Command** | `npm run start:api` |
 | **Health Check Path** | `/health` (DB-independent — returns 200 even before the DB is reachable, so health checks don't flap) |
 | **Runtime** | Node.js |
 | **Node version** | `>=20` — set env `NODE_VERSION=22` |
 
-The build compiles `apps/api` (and `apps/web`, which you can ignore or deploy
-as a second web service later). Start runs `node dist/server.js` listening on
-the `PORT` that Render injects.
+The build compiles **API only** (`tsc` → `apps/api/dist`). Start runs
+`node dist/server.js` listening on the `PORT` that Render injects.
+
+> **Why not `npm run build` (root)?** It also compiles `apps/web`. The web app
+> belongs to the frontend owner and its `next build` currently fails on Render
+> (prerender error on `/_global-error`, `useContext` on null) — don't let that
+> block the backend. Deploy the web app as its own Render service
+> (`npm run start:web`, it builds with `next build`) after the frontend fix.
 
 ---
 
@@ -103,7 +108,7 @@ services:
     runtime: node
     rootDir: carenest
     plan: free
-    buildCommand: npm ci && npm run build
+    buildCommand: npm ci && npm run build --workspace apps/api
     startCommand: npm run start:api
     healthCheckPath: /health
     autoDeploy: true
