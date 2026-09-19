@@ -1,0 +1,260 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "CareNest API",
+    "version": "0.1.0",
+    "description": "Offline-first, voice-powered field copilot for Community Health Workers. Base URL (development): http://localhost:4000. All success responses are wrapped as `{ success: true, data: ... }`; all errors as `{ success: false, error: { code, message, details? } }`. See docs/API.md for the human-readable version of this contract."
+  },
+  "servers": [{ "url": "http://localhost:4000", "description": "Local development" }],
+  "tags": [
+    { "name": "Health" },
+    { "name": "Auth" },
+    { "name": "Users", "description": "Organization user management / CHW onboarding (ADMIN only, except read for SUPERVISOR)" },
+    { "name": "Patients", "description": "Organization-scoped patient management" },
+    { "name": "Visits", "description": "Create (text/voice) → STT → AI structuring → review → confirm → timeline" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT" }
+    },
+    "responses": {
+      "Unauthorized": { "description": "Missing, malformed, or expired token", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } } },
+      "Forbidden": { "description": "Authenticated but insufficient role, or inactive account", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } } },
+      "NotFound": { "description": "Resource does not exist, or belongs to a different organization (cross-org access looks identical to not-found)", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } } }
+    },
+    "schemas": {
+      "ErrorEnvelope": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": false },
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": { "type": "string", "enum": ["VALIDATION_ERROR", "NOT_FOUND", "UNAUTHORIZED", "FORBIDDEN", "CONFLICT", "INTERNAL_ERROR"] },
+              "message": { "type": "string" },
+              "details": { "type": "array", "items": {} }
+            }
+          }
+        }
+      },
+      "AuthUser": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "organizationId": { "type": "string", "format": "uuid" },
+          "role": { "type": "string", "enum": ["ADMIN", "CHW", "SUPERVISOR"] },
+          "name": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "active": { "type": "boolean" }
+        }
+      },
+      "OrgUser": {
+        "allOf": [
+          { "$ref": "#/components/schemas/AuthUser" },
+          {
+            "type": "object",
+            "properties": {
+              "phone": { "type": "string", "nullable": true },
+              "createdAt": { "type": "string", "format": "date-time" },
+              "updatedAt": { "type": "string", "format": "date-time" }
+            }
+          }
+        ]
+      },
+      "Patient": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "organizationId": { "type": "string", "format": "uuid" },
+          "uniqueId": { "type": "string", "nullable": true },
+          "firstName": { "type": "string" },
+          "lastName": { "type": "string" },
+          "dateOfBirth": { "type": "string", "format": "date", "nullable": true },
+          "gender": { "type": "string", "nullable": true },
+          "phone": { "type": "string", "nullable": true },
+          "address": { "type": "string", "nullable": true },
+          "clientGeneratedId": { "type": "string", "format": "uuid", "nullable": true },
+          "createdBy": { "type": "string", "format": "uuid", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "AttributedItem": {
+        "type": "object",
+        "required": ["text", "sourceType"],
+        "properties": {
+          "text": { "type": "string" },
+          "sourceType": { "type": "string", "enum": ["PATIENT_REPORTED", "CHW_RECORDED", "AI_SUGGESTED", "PROVIDER_VERIFIED"] }
+        }
+      },
+      "ConfirmedVisitJson": {
+        "type": "object",
+        "required": ["summary", "reportedConcerns", "missingInformation", "suggestedFollowUps"],
+        "properties": {
+          "summary": { "$ref": "#/components/schemas/AttributedItem" },
+          "reportedConcerns": { "type": "array", "items": { "$ref": "#/components/schemas/AttributedItem" } },
+          "missingInformation": { "type": "array", "items": { "$ref": "#/components/schemas/AttributedItem" } },
+          "suggestedFollowUps": { "type": "array", "items": { "$ref": "#/components/schemas/AttributedItem" } }
+        }
+      },
+      "Visit": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "organizationId": { "type": "string", "format": "uuid" },
+          "patientId": { "type": "string", "format": "uuid" },
+          "chwId": { "type": "string", "format": "uuid" },
+          "visitedAt": { "type": "string", "format": "date-time" },
+          "notes": { "type": "string", "nullable": true },
+          "transcript": { "type": "string", "nullable": true },
+          "aiGeneratedJson": { "type": "object", "nullable": true, "description": "AI draft, immutable once written. See docs/ai-visit-integration.md." },
+          "aiStatus": { "type": "string", "enum": ["PENDING", "READY", "VALIDATED", "FAILED"] },
+          "aiValidated": { "type": "boolean" },
+          "aiReviewedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "aiError": { "type": "string", "nullable": true },
+          "confirmedJson": { "allOf": [{ "$ref": "#/components/schemas/ConfirmedVisitJson" }], "nullable": true },
+          "reviewNotes": { "type": "string", "nullable": true },
+          "status": { "type": "string", "enum": ["DRAFT", "UNDER_REVIEW", "CONFIRMED"] },
+          "confirmedBy": { "type": "string", "format": "uuid", "nullable": true },
+          "confirmedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "clientGeneratedId": { "type": "string", "format": "uuid", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "TimelineEntry": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "visitedAt": { "type": "string", "format": "date-time" },
+          "status": { "type": "string", "enum": ["DRAFT", "UNDER_REVIEW", "CONFIRMED"] },
+          "aiStatus": { "type": "string", "enum": ["PENDING", "READY", "VALIDATED", "FAILED"] },
+          "summary": { "type": "string", "nullable": true },
+          "transcript": { "type": "string", "nullable": true },
+          "confirmedBy": { "type": "string", "format": "uuid", "nullable": true },
+          "confirmedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      }
+    }
+  },
+  "security": [{ "bearerAuth": [] }],
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": ["Health"], "summary": "Liveness probe (no DB access, no auth)", "security": [],
+        "responses": { "200": { "description": "API process is up", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "message": { "type": "string" } } } } } } }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": ["Auth"], "summary": "Login with email + password, returns a bearer JWT", "security": [],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["email", "password"], "properties": { "email": { "type": "string" }, "password": { "type": "string" } } } } } },
+        "responses": {
+          "200": { "description": "Authenticated", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "data": { "type": "object", "properties": { "token": { "type": "string" }, "user": { "$ref": "#/components/schemas/AuthUser" } } } } } } } },
+          "401": { "description": "Bad credentials", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } } },
+          "403": { "description": "Inactive account", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } } }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "tags": ["Auth"], "summary": "Returns the authenticated user (re-validated against the DB every call)",
+        "responses": { "200": { "description": "Current user", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "data": { "$ref": "#/components/schemas/AuthUser" } } } } } }, "401": { "$ref": "#/components/responses/Unauthorized" } }
+      }
+    },
+    "/api/v1/users": {
+      "post": {
+        "tags": ["Users"], "summary": "Create a CHW (ADMIN only) — role is always CHW, never read from the body",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["name", "email", "password"], "properties": { "name": { "type": "string" }, "email": { "type": "string" }, "password": { "type": "string", "description": "Initial credential; no email invitation flow" }, "phone": { "type": "string" } } } } } },
+        "responses": {
+          "201": { "description": "Created", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "data": { "type": "object", "properties": { "user": { "$ref": "#/components/schemas/OrgUser" } } } } } } } },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "409": { "description": "Duplicate email", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } } }
+        }
+      },
+      "get": {
+        "tags": ["Users"], "summary": "List organization users (ADMIN; SUPERVISOR read-only)",
+        "parameters": [{ "name": "role", "in": "query", "schema": { "type": "string", "enum": ["ADMIN", "CHW", "SUPERVISOR"] } }],
+        "responses": { "200": { "description": "Users", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "data": { "type": "object", "properties": { "users": { "type": "array", "items": { "$ref": "#/components/schemas/OrgUser" } } } } } } } } } }
+      }
+    },
+    "/api/v1/users/{id}": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+      "get": { "tags": ["Users"], "summary": "Get one organization user (ADMIN; SUPERVISOR read-only)", "responses": { "200": { "description": "User", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "data": { "type": "object", "properties": { "user": { "$ref": "#/components/schemas/OrgUser" } } } } } } } }, "404": { "$ref": "#/components/responses/NotFound" } } },
+      "patch": {
+        "tags": ["Users"], "summary": "Update a CHW's name/email/phone/password (ADMIN)",
+        "requestBody": { "content": { "application/json": { "schema": { "type": "object", "properties": { "name": { "type": "string" }, "email": { "type": "string" }, "phone": { "type": "string", "nullable": true }, "password": { "type": "string" } } } } } },
+        "responses": { "200": { "description": "Updated", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "data": { "type": "object", "properties": { "user": { "$ref": "#/components/schemas/OrgUser" } } } } } } } }, "404": { "$ref": "#/components/responses/NotFound" }, "409": { "description": "Duplicate email" } }
+      }
+    },
+    "/api/v1/users/{id}/deactivate": {
+      "post": { "tags": ["Users"], "summary": "Deactivate a user (ADMIN) — takes effect immediately, existing JWTs stop authorizing", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "responses": { "200": { "description": "Deactivated" }, "400": { "description": "Cannot deactivate your own account" } } }
+    },
+    "/api/v1/users/{id}/reactivate": {
+      "post": { "tags": ["Users"], "summary": "Reactivate a user (ADMIN)", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "responses": { "200": { "description": "Reactivated" } } }
+    },
+    "/api/v1/patients": {
+      "post": {
+        "tags": ["Patients"], "summary": "Create a patient (CHW, ADMIN)",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["firstName", "lastName"], "properties": { "firstName": { "type": "string" }, "lastName": { "type": "string" }, "uniqueId": { "type": "string" }, "clientGeneratedId": { "type": "string", "format": "uuid", "description": "Offline-sync idempotency key, unique per organization" }, "dateOfBirth": { "type": "string", "format": "date" }, "gender": { "type": "string" }, "phone": { "type": "string" }, "address": { "type": "string" } } } } } },
+        "responses": { "201": { "description": "Created (or existing patient if clientGeneratedId already used — idempotent)", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "data": { "type": "object", "properties": { "patient": { "$ref": "#/components/schemas/Patient" } } } } } } } } }
+      },
+      "get": {
+        "tags": ["Patients"], "summary": "List organization patients (all roles)",
+        "parameters": [{ "name": "search", "in": "query", "schema": { "type": "string" }, "description": "Matches firstName, lastName, uniqueId, or phone" }],
+        "responses": { "200": { "description": "Patients", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "data": { "type": "object", "properties": { "patients": { "type": "array", "items": { "$ref": "#/components/schemas/Patient" } } } } } } } } } }
+      }
+    },
+    "/api/v1/patients/{id}": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+      "get": { "tags": ["Patients"], "summary": "Get one patient (all roles)", "responses": { "200": { "description": "Patient", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "data": { "type": "object", "properties": { "patient": { "$ref": "#/components/schemas/Patient" } } } } } } } } }, "404": { "$ref": "#/components/responses/NotFound" } },
+      "patch": {
+        "tags": ["Patients"], "summary": "Update a patient (CHW, ADMIN)",
+        "requestBody": { "content": { "application/json": { "schema": { "type": "object", "properties": { "uniqueId": { "type": "string", "nullable": true }, "firstName": { "type": "string" }, "lastName": { "type": "string" }, "dateOfBirth": { "type": "string", "format": "date", "nullable": true }, "gender": { "type": "string", "nullable": true }, "phone": { "type": "string", "nullable": true }, "address": { "type": "string", "nullable": true } } } } } },
+        "responses": { "200": { "description": "Updated" }, "404": { "$ref": "#/components/responses/NotFound" } }
+      }
+    },
+    "/api/v1/visits": {
+      "post": {
+        "tags": ["Visits"], "summary": "Create a visit — text (application/json) or voice (multipart/form-data), same URL, dispatched by Content-Type",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "type": "object", "required": ["patientId", "transcript"], "properties": { "patientId": { "type": "string", "format": "uuid" }, "transcript": { "type": "string" }, "visitedAt": { "type": "string", "format": "date-time" }, "notes": { "type": "string", "nullable": true }, "clientGeneratedId": { "type": "string", "format": "uuid" } } } },
+            "multipart/form-data": { "schema": { "type": "object", "required": ["patientId", "audio"], "properties": { "patientId": { "type": "string", "format": "uuid" }, "audio": { "type": "string", "format": "binary", "description": "flac, mp3, mp4, mpeg, mpga, m4a, ogg, wav, or webm; ≤ 25MB" }, "visitedAt": { "type": "string", "format": "date-time" }, "notes": { "type": "string" }, "clientGeneratedId": { "type": "string", "format": "uuid" } } } }
+          }
+        },
+        "responses": {
+          "201": { "description": "Visit created (aiStatus VALIDATED on AI success, FAILED with aiError on AI failure — transcript always saved either way)", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "data": { "type": "object", "properties": { "visit": { "$ref": "#/components/schemas/Visit" } } } } } } } },
+          "400": { "description": "STT failed (voice) or validation error — no visit row created on STT failure; retry as text", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/v1/visits/{id}": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+      "get": { "tags": ["Visits"], "summary": "Get one visit, including AI draft and confirmed record (all roles)", "responses": { "200": { "description": "Visit", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "data": { "type": "object", "properties": { "visit": { "$ref": "#/components/schemas/Visit" } } } } } } } } }, "404": { "$ref": "#/components/responses/NotFound" } },
+      "patch": {
+        "tags": ["Visits"], "summary": "Review a visit (CHW, ADMIN) — moves status to UNDER_REVIEW",
+        "requestBody": { "content": { "application/json": { "schema": { "type": "object", "properties": { "notes": { "type": "string", "nullable": true }, "reviewNotes": { "type": "string", "nullable": true } } } } } },
+        "responses": { "200": { "description": "Updated" }, "404": { "$ref": "#/components/responses/NotFound" } }
+      }
+    },
+    "/api/v1/visits/{id}/confirm": {
+      "post": {
+        "tags": ["Visits"], "summary": "Confirm a visit (CHW, ADMIN) — human sign-off, required before a visit is final. Works even when aiStatus is FAILED.",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["confirmedJson"], "properties": { "confirmedJson": { "$ref": "#/components/schemas/ConfirmedVisitJson" }, "reviewNotes": { "type": "string", "nullable": true } } } } } },
+        "responses": { "200": { "description": "Confirmed — status CONFIRMED, confirmedBy/confirmedAt set, AI draft never overwritten", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "data": { "type": "object", "properties": { "visit": { "$ref": "#/components/schemas/Visit" } } } } } } } }, "404": { "$ref": "#/components/responses/NotFound" } }
+      }
+    },
+    "/api/v1/patients/{id}/timeline": {
+      "get": {
+        "tags": ["Visits"], "summary": "Patient visit timeline, newest first (all roles)",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": { "200": { "description": "Timeline", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "data": { "type": "object", "properties": { "patientId": { "type": "string", "format": "uuid" }, "visits": { "type": "array", "items": { "$ref": "#/components/schemas/TimelineEntry" } }, "followUps": { "type": "array", "items": {} } } } } } } } }, "404": { "$ref": "#/components/responses/NotFound" } }
+      }
+    }
+  }
+}

@@ -74,7 +74,9 @@ export interface CareNestAiResult {
 }
 
 export type AiErrorCode =
+  | "INVALID_INPUT"
   | "EMPTY_TRANSCRIPT"
+  | "TRANSCRIPT_TOO_LONG"
   | "PROVIDER_NOT_CONFIGURED"
   | "PROVIDER_ERROR"
   | "PROVIDER_TIMEOUT"

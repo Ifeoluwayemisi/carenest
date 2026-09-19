@@ -17,7 +17,14 @@ interface UnsafePattern {
  */
 const UNSAFE_PATTERNS: UnsafePattern[] = [
   { category: "diagnostic_language", pattern: /\bdiagnos(e|is|ed|ing)\b/i },
-  { category: "diagnostic_language", pattern: /\byou (have|are suffering from)\b/i },
+  // Covers both second-person ("you have...") and the more common
+  // AI-authored third-person phrasing ("the patient has...", "she is
+  // suffering from...") — a summary written about "the patient" is the
+  // realistic case, not "you", so both must be caught.
+  {
+    category: "diagnostic_language",
+    pattern: /\b(you|the patient|patient|he|she|they) (has|have|is suffering from|are suffering from)\b/i,
+  },
   { category: "diagnostic_language", pattern: /\bthis (is|indicates)\s+(a case of|likely)\b/i },
   { category: "diagnostic_language", pattern: /\brule(s)?\s+out\b/i },
   { category: "prescriptive_language", pattern: /\bprescri(be|bed|bing|ption)\b/i },

@@ -5,6 +5,10 @@ import type { Pool } from "pg";
 // Resolves to apps/api/migrations whether running from src/ (tsx) or dist/ (node).
 const MIGRATIONS_DIR = path.resolve(__dirname, "../../migrations");
 
+// Advisory lock key so concurrent processes (CI, parallel test workers, two
+// devs) cannot run the same migration at the same time.
+const MIGRATIONS_ADVISORY_LOCK = 727_101;
+
 /**
  * Applies pending SQL migrations in filename order.
  * Applied files are tracked in the `schema_migrations` table so each file runs
@@ -14,6 +18,8 @@ export async function runMigrations(pool: Pool): Promise<void> {
   const client = await pool.connect();
 
   try {
+    await client.query("SELECT pg_advisory_lock($1)", [MIGRATIONS_ADVISORY_LOCK]);
+
     await client.query(`
       CREATE TABLE IF NOT EXISTS schema_migrations (
         filename   TEXT PRIMARY KEY,
@@ -55,6 +61,10 @@ export async function runMigrations(pool: Pool): Promise<void> {
       }
     }
   } finally {
+    await client.query("SELECT pg_advisory_unlock($1)", [MIGRATIONS_ADVISORY_LOCK]).catch(() => {
+      // Connection may already be gone; the lock is session-scoped and is
+      // released automatically when the connection closes.
+    });
     client.release();
   }
 }

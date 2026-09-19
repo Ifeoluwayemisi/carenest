@@ -95,6 +95,15 @@ Endpoints (see `docs/API.md`): `POST /api/v1/auth/login` and `GET /api/v1/auth/m
 - Email lookup is case-insensitive in the service layer (backed by the
   `users_email_lower_uidx` index).
 
+### Domains implemented on top
+
+- **Users** (`/api/v1/users`): ADMIN-managed CHW onboarding (create/list/view/update/
+  deactivate/reactivate). SUPERVISOR read-only. Deactivation revokes access immediately
+  via the per-request DB active check; records are never deleted.
+- **Patients** (`/api/v1/patients`): org-scoped CRUD. `client_generated_id` (UUID) is the
+  single offline idempotency concept; re-creating with the same value returns the existing
+  patient for safe sync retries.
+
 ### Demo credentials
 
 ```text

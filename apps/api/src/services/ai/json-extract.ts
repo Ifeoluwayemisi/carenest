@@ -15,9 +15,14 @@ export function extractJson(rawText: string): unknown | null {
 
   const candidates: string[] = [rawText.trim()];
 
-  const fenced = rawText.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  if (fenced?.[1]) {
-    candidates.push(fenced[1].trim());
+  // Try every fenced code block, not just the first — a model occasionally
+  // prefaces its real answer with an example/instructions block that also
+  // happens to contain braces, and the first fence isn't always the one
+  // with the actual result.
+  for (const match of rawText.matchAll(/```(?:json)?\s*([\s\S]*?)```/gi)) {
+    if (match[1]) {
+      candidates.push(match[1].trim());
+    }
   }
 
   const firstBrace = rawText.indexOf("{");

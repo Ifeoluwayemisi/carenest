@@ -6,8 +6,6 @@ import {
   listPatientsQuerySchema,
   patientParamsSchema,
   updatePatientBodySchema,
-  type CreatePatientBody,
-  type PatientParams,
   type PatientResponse,
   type PatientsResponse,
 } from "../schemas/patient.schema";
@@ -23,7 +21,7 @@ export async function createPatientController(
   reply: FastifyReply,
 ): Promise<void> {
   const auth = requireAuth(request);
-  const body = validate(createPatientBodySchema, request.body) as CreatePatientBody;
+  const body = validate(createPatientBodySchema, request.body);
   const patient = await createOrgPatient(auth.organizationId, auth.id, {
     uniqueId: body.uniqueId,
     clientGeneratedId: body.clientGeneratedId,
@@ -52,7 +50,7 @@ export async function getPatientController(
   reply: FastifyReply,
 ): Promise<void> {
   const auth = requireAuth(request);
-  const params = validate(patientParamsSchema, request.params) as PatientParams;
+  const params = validate(patientParamsSchema, request.params);
   const patient = await getOrgPatient(auth.organizationId, params.id);
   reply.send({ success: true, data: { patient } satisfies PatientResponse });
 }
@@ -62,7 +60,7 @@ export async function updatePatientController(
   reply: FastifyReply,
 ): Promise<void> {
   const auth = requireAuth(request);
-  const params = validate(patientParamsSchema, request.params) as PatientParams;
+  const params = validate(patientParamsSchema, request.params);
   const body = validate(updatePatientBodySchema, request.body);
   const patient = await updateOrgPatient(auth.organizationId, params.id, {
     uniqueId: body.uniqueId,

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { careNestAiResultSchema, rawAiOutputSchema } from "../../src/services/ai/schemas";
+import {
+  careNestAiResultSchema,
+  patientContextSchema,
+  processVisitInputSchema,
+  rawAiOutputSchema,
+} from "../../src/services/ai/schemas";
 
 const validRaw = {
   summary: "Patient reported a persistent cough.",
@@ -56,6 +61,96 @@ describe("rawAiOutputSchema", () => {
     expect(
       rawAiOutputSchema.safeParse({ ...validRaw, summary: "x".repeat(2001) }).success,
     ).toBe(false);
+  });
+
+  it("rejects incorrect field types", () => {
+    expect(rawAiOutputSchema.safeParse({ ...validRaw, summary: 12345 }).success).toBe(false);
+    expect(
+      rawAiOutputSchema.safeParse({ ...validRaw, reportedConcerns: "not an array" }).success,
+    ).toBe(false);
+    expect(
+      rawAiOutputSchema.safeParse({ ...validRaw, missingInformation: [123, 456] }).success,
+    ).toBe(false);
+  });
+
+  it("rejects a whitespace-only summary", () => {
+    expect(rawAiOutputSchema.safeParse({ ...validRaw, summary: "   " }).success).toBe(false);
+  });
+
+  it("rejects null/undefined in place of the whole object", () => {
+    expect(rawAiOutputSchema.safeParse(null).success).toBe(false);
+    expect(rawAiOutputSchema.safeParse(undefined).success).toBe(false);
+    expect(rawAiOutputSchema.safeParse("just a string").success).toBe(false);
+  });
+});
+
+describe("patientContextSchema", () => {
+  it("accepts an empty object and a fully populated one", () => {
+    expect(patientContextSchema.safeParse({}).success).toBe(true);
+    expect(
+      patientContextSchema.safeParse({
+        ageYears: 34,
+        gender: "female",
+        knownConditionsNote: "Known hypertension, on treatment.",
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects an out-of-range or wrong-typed ageYears", () => {
+    expect(patientContextSchema.safeParse({ ageYears: -1 }).success).toBe(false);
+    expect(patientContextSchema.safeParse({ ageYears: 999 }).success).toBe(false);
+    expect(patientContextSchema.safeParse({ ageYears: "thirty-four" }).success).toBe(false);
+    expect(patientContextSchema.safeParse({ ageYears: 34.5 }).success).toBe(false);
+  });
+
+  it("rejects unexpected extra fields", () => {
+    const result = patientContextSchema.safeParse({
+      ageYears: 34,
+      organizationId: "org-123", // must never be absorbed by this module
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("processVisitInputSchema", () => {
+  it("accepts a transcript with no patientContext", () => {
+    expect(processVisitInputSchema.safeParse({ transcript: "Patient reports a cough." }).success).toBe(
+      true,
+    );
+  });
+
+  it("accepts a transcript with a valid patientContext", () => {
+    const result = processVisitInputSchema.safeParse({
+      transcript: "Patient reports a cough.",
+      patientContext: { ageYears: 5, gender: "male" },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a missing transcript field", () => {
+    expect(processVisitInputSchema.safeParse({}).success).toBe(false);
+  });
+
+  it("rejects a non-string transcript", () => {
+    expect(processVisitInputSchema.safeParse({ transcript: 12345 }).success).toBe(false);
+    expect(processVisitInputSchema.safeParse({ transcript: null }).success).toBe(false);
+    expect(processVisitInputSchema.safeParse({ transcript: { text: "hi" } }).success).toBe(false);
+  });
+
+  it("rejects a malformed patientContext nested inside a valid transcript", () => {
+    const result = processVisitInputSchema.safeParse({
+      transcript: "Patient reports a cough.",
+      patientContext: { ageYears: "not a number" },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects unexpected top-level fields (e.g. an accidentally-forwarded organizationId)", () => {
+    const result = processVisitInputSchema.safeParse({
+      transcript: "Patient reports a cough.",
+      organizationId: "org-123",
+    });
+    expect(result.success).toBe(false);
   });
 });
 

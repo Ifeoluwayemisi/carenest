@@ -6,8 +6,6 @@ import {
   listUsersQuerySchema,
   updateUserBodySchema,
   userParamsSchema,
-  type CreateUserBody,
-  type UserParams,
   type UserResponse,
   type UsersResponse,
 } from "../schemas/user.schema";
@@ -24,7 +22,7 @@ export async function createUserController(
   reply: FastifyReply,
 ): Promise<void> {
   const auth = requireAuth(request);
-  const body = validate(createUserBodySchema, request.body) as CreateUserBody;
+  const body = validate(createUserBodySchema, request.body);
   const user = await createCHW(auth.organizationId, {
     name: body.name,
     email: body.email,
@@ -49,7 +47,7 @@ export async function getUserController(
   reply: FastifyReply,
 ): Promise<void> {
   const auth = requireAuth(request);
-  const params = validate(userParamsSchema, request.params) as UserParams;
+  const params = validate(userParamsSchema, request.params);
   const user = await getOrgUser(auth.organizationId, params.id);
   reply.send({ success: true, data: { user } satisfies UserResponse });
 }
@@ -59,7 +57,7 @@ export async function updateUserController(
   reply: FastifyReply,
 ): Promise<void> {
   const auth = requireAuth(request);
-  const params = validate(userParamsSchema, request.params) as UserParams;
+  const params = validate(userParamsSchema, request.params);
   const body = validate(updateUserBodySchema, request.body);
   const user = await updateOrgUser(auth.organizationId, params.id, {
     name: body.name,
@@ -75,7 +73,7 @@ export async function deactivateUserController(
   reply: FastifyReply,
 ): Promise<void> {
   const auth = requireAuth(request);
-  const params = validate(userParamsSchema, request.params) as UserParams;
+  const params = validate(userParamsSchema, request.params);
   const user = await setOrgUserActive(auth.organizationId, params.id, false, auth.id);
   reply.send({ success: true, data: { user } satisfies UserResponse });
 }
@@ -85,7 +83,7 @@ export async function reactivateUserController(
   reply: FastifyReply,
 ): Promise<void> {
   const auth = requireAuth(request);
-  const params = validate(userParamsSchema, request.params) as UserParams;
+  const params = validate(userParamsSchema, request.params);
   const user = await setOrgUserActive(auth.organizationId, params.id, true, auth.id);
   reply.send({ success: true, data: { user } satisfies UserResponse });
 }

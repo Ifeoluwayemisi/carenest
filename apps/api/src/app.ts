@@ -3,11 +3,17 @@ import Fastify, {
   type FastifyServerOptions,
 } from "fastify";
 import cors from "@fastify/cors";
+import multipart from "@fastify/multipart";
 import { env } from "./config/env";
 import { loggerOptions } from "./lib/logger";
 import { registerErrorHandling } from "./middlewares/error-handler";
 import { authRoutes } from "./routes/auth.route";
+import { docsRoutes } from "./routes/docs.route";
 import { healthRoutes } from "./routes/health.route";
+import { patientRoutes } from "./routes/patients.route";
+import { userRoutes } from "./routes/users.route";
+import { visitRoutes } from "./routes/visits.route";
+import { STT_LIMITS } from "./services/speech";
 
 export interface BuildAppOptions {
   logger?: FastifyServerOptions["logger"];
@@ -28,10 +34,18 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     credentials: true,
   });
 
+  void app.register(multipart, {
+    limits: { fileSize: STT_LIMITS.maxAudioBytes },
+  });
+
   registerErrorHandling(app);
 
   void app.register(healthRoutes);
+  void app.register(docsRoutes);
   void app.register(authRoutes);
+  void app.register(userRoutes);
+  void app.register(patientRoutes);
+  void app.register(visitRoutes);
 
   return app;
 }

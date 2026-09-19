@@ -1,0 +1,319 @@
+{
+  "info": {
+    "name": "CareNest API",
+    "description": "CareNest backend — Auth, Users (CHW onboarding), Patients, Visits (text/voice → STT → AI → review → confirm → timeline). Generated from docs/API.md.\n\nQuick start:\n1. Set `baseUrl` (default http://localhost:4000, must be running: `npm run dev` in apps/api).\n2. Run \"Login\" with a real ADMIN account from your seed data — it auto-saves the bearer token to `{{token}}` for every other request.\n3. Run \"Create CHW\", then log in as that CHW (or stay as ADMIN — both can write) and run \"Create patient\", then the Visits folder in order. Each create step auto-saves the id it created (`chwId` / `patientId` / `visitId`) for the next request.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4000" },
+    { "key": "token", "value": "" },
+    { "key": "adminEmail", "value": "" },
+    { "key": "adminPassword", "value": "" },
+    { "key": "chwEmail", "value": "" },
+    { "key": "chwPassword", "value": "" },
+    { "key": "chwId", "value": "" },
+    { "key": "patientId", "value": "" },
+    { "key": "visitId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('token', body.data.token);",
+                  "  pm.test('token saved', () => pm.expect(body.data.token).to.be.a('string'));",
+                  "} else {",
+                  "  pm.test('login failed', () => pm.expect.fail(pm.response.text()));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "v1", "auth", "login"] },
+            "description": "Set adminEmail/adminPassword collection variables to a real seeded ADMIN account first. Auto-saves the bearer token."
+          }
+        },
+        {
+          "name": "Get current user (me)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/auth/me", "host": ["{{baseUrl}}"], "path": ["api", "v1", "auth", "me"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users (ADMIN — CHW onboarding)",
+      "item": [
+        {
+          "name": "Create CHW",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('chwId', pm.response.json().data.user.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Amina CHW\",\n  \"email\": \"{{chwEmail}}\",\n  \"password\": \"{{chwPassword}}\",\n  \"phone\": \"+2348000000000\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/users", "host": ["{{baseUrl}}"], "path": ["api", "v1", "users"] },
+            "description": "ADMIN only. Set chwEmail/chwPassword collection variables first (chwPassword is the CHW's initial login credential — no email invitation flow in the MVP)."
+          }
+        },
+        {
+          "name": "List users",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users?role=CHW",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users"],
+              "query": [{ "key": "role", "value": "CHW", "description": "optional: ADMIN | CHW | SUPERVISOR" }]
+            }
+          }
+        },
+        {
+          "name": "Get user by id",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/users/{{chwId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "users", "{{chwId}}"] }
+          }
+        },
+        {
+          "name": "Update user",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"phone\": \"+2348011111111\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/v1/users/{{chwId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "users", "{{chwId}}"] }
+          }
+        },
+        {
+          "name": "Deactivate user",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/api/v1/users/{{chwId}}/deactivate", "host": ["{{baseUrl}}"], "path": ["api", "v1", "users", "{{chwId}}", "deactivate"] }
+          }
+        },
+        {
+          "name": "Reactivate user",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/api/v1/users/{{chwId}}/reactivate", "host": ["{{baseUrl}}"], "path": ["api", "v1", "users", "{{chwId}}", "reactivate"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Patients",
+      "item": [
+        {
+          "name": "Create patient",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('patientId', pm.response.json().data.patient.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Fatima\",\n  \"lastName\": \"Bello\",\n  \"dateOfBirth\": \"1990-03-14\",\n  \"gender\": \"female\",\n  \"phone\": \"+2348022222222\",\n  \"address\": \"12 Ibadan Street\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/patients", "host": ["{{baseUrl}}"], "path": ["api", "v1", "patients"] }
+          }
+        },
+        {
+          "name": "List patients",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/patients", "host": ["{{baseUrl}}"], "path": ["api", "v1", "patients"] }
+          }
+        },
+        {
+          "name": "Search patients",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patients?search=Bello",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "patients"],
+              "query": [{ "key": "search", "value": "Bello" }]
+            }
+          }
+        },
+        {
+          "name": "Get patient by id",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/patients/{{patientId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "patients", "{{patientId}}"] }
+          }
+        },
+        {
+          "name": "Update patient",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"address\": \"14 Ibadan Street\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/v1/patients/{{patientId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "patients", "{{patientId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Visits",
+      "item": [
+        {
+          "name": "Create visit — text",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('visitId', pm.response.json().data.visit.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientId\": \"{{patientId}}\",\n  \"transcript\": \"Patient reports a cough for three days and mild fatigue. No fever mentioned.\",\n  \"visitedAt\": \"2026-09-19T10:00:00Z\",\n  \"notes\": \"Home visit, patient alert and oriented.\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/visits", "host": ["{{baseUrl}}"], "path": ["api", "v1", "visits"] },
+            "description": "Creates a DRAFT visit, then runs the transcript through AI structuring. Check aiStatus in the response: VALIDATED (draft ready) or FAILED (aiError set, transcript still saved — confirm still works manually)."
+          }
+        },
+        {
+          "name": "Create visit — voice (audio upload)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('visitId', pm.response.json().data.visit.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "patientId", "value": "{{patientId}}", "type": "text" },
+                { "key": "visitedAt", "value": "2026-09-19T10:00:00Z", "type": "text" },
+                { "key": "notes", "value": "Voice-recorded home visit.", "type": "text" },
+                { "key": "audio", "type": "file", "src": [] }
+              ]
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/visits", "host": ["{{baseUrl}}"], "path": ["api", "v1", "visits"] },
+            "description": "Same URL as the text visit — dispatches on Content-Type. Attach a real audio file (webm/mp3/mp4/m4a/ogg/wav/flac, ≤ 25MB) to the `audio` field before sending. On STT failure, no visit row is created (400) — retry via the text-visit request instead."
+          }
+        },
+        {
+          "name": "Get visit by id",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/visits/{{visitId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "visits", "{{visitId}}"] }
+          }
+        },
+        {
+          "name": "Review visit (CHW edits before confirming)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reviewNotes\": \"Reviewed AI draft, looks accurate.\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/visits/{{visitId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "visits", "{{visitId}}"] },
+            "description": "Moves status to UNDER_REVIEW. Optional step before confirming."
+          }
+        },
+        {
+          "name": "Confirm visit",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"confirmedJson\": {\n    \"summary\": { \"text\": \"Routine visit; patient reported a cough and mild fatigue, no fever.\", \"sourceType\": \"AI_SUGGESTED\" },\n    \"reportedConcerns\": [\n      { \"text\": \"Cough for 3 days\", \"sourceType\": \"PATIENT_REPORTED\" }\n    ],\n    \"missingInformation\": [\n      { \"text\": \"No temperature recorded\", \"sourceType\": \"AI_SUGGESTED\" }\n    ],\n    \"suggestedFollowUps\": [\n      { \"text\": \"Re-visit in 3 days if symptoms persist\", \"sourceType\": \"AI_SUGGESTED\" }\n    ]\n  },\n  \"reviewNotes\": \"Confirmed as accurate.\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/visits/{{visitId}}/confirm", "host": ["{{baseUrl}}"], "path": ["api", "v1", "visits", "{{visitId}}", "confirm"] },
+            "description": "Human confirmation step — required before a visit is final. Works even if aiStatus is FAILED (edit confirmedJson to match whatever the CHW actually observed in that case). confirmedJson must preserve the { text, sourceType } source-attribution shape: PATIENT_REPORTED, CHW_RECORDED, AI_SUGGESTED, or PROVIDER_VERIFIED."
+          }
+        },
+        {
+          "name": "Patient timeline",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/patients/{{patientId}}/timeline", "host": ["{{baseUrl}}"], "path": ["api", "v1", "patients", "{{patientId}}", "timeline"] }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -17,6 +17,20 @@ describe("scanForUnsafeLanguage", () => {
     expect(scanForUnsafeLanguage("We can rule out dehydration.")).toContain("diagnostic_language");
   });
 
+  it("flags third-person diagnostic phrasing (the realistic case for AI-authored summaries)", () => {
+    // Regression test: the model writes about "the patient", not "you" — an
+    // AI summary asserting a diagnosis in third person must be caught just
+    // as reliably as second-person phrasing.
+    expect(scanForUnsafeLanguage("Patient has malaria.")).toContain("diagnostic_language");
+    expect(scanForUnsafeLanguage("The patient has malaria and needs treatment.")).toContain(
+      "diagnostic_language",
+    );
+    expect(scanForUnsafeLanguage("She is suffering from tuberculosis.")).toContain(
+      "diagnostic_language",
+    );
+    expect(scanForUnsafeLanguage("He has diabetes.")).toContain("diagnostic_language");
+  });
+
   it("flags prescriptive language", () => {
     expect(scanForUnsafeLanguage("Prescribe amoxicillin for the infection.")).toContain(
       "prescriptive_language",
@@ -44,5 +58,19 @@ describe("scanForUnsafeLanguage", () => {
 
   it("does not flag ordinary numbers unrelated to vitals/dosage", () => {
     expect(scanForUnsafeLanguage("The patient lives 5 kilometers from the clinic.")).toEqual([]);
+  });
+
+  it("documents a known, accepted false-positive tradeoff: 'patient has <symptom>' also gets flagged", () => {
+    // The broadened third-person diagnostic pattern (see the regression test
+    // above) cannot distinguish "the patient has malaria" (a diagnosis) from
+    // "the patient has a cough" (a benign symptom restatement) without a
+    // curated disease-name list, which this module deliberately does not
+    // maintain. Per the existing design philosophy (see the UNSAFE_PATTERNS
+    // comment above), over-inclusion is the accepted, safe failure mode: a
+    // false positive here just means the draft is rejected and the CHW
+    // documents manually — never a fabricated or unsafe record slipping
+    // through. prompt.ts mitigates this by instructing the model to prefer
+    // "reported/observed" phrasing over "has" phrasing in the first place.
+    expect(scanForUnsafeLanguage("The patient has a mild cough.")).toContain("diagnostic_language");
   });
 });

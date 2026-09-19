@@ -4,9 +4,19 @@ import { extractJson } from "./json-extract";
 import { buildPrompt } from "./prompt";
 import { createAiProvider } from "./providers";
 import { AiProviderNotConfiguredError, type AiProvider } from "./provider";
-import { careNestAiResultSchema, rawAiOutputSchema } from "./schemas";
+import { careNestAiResultSchema, processVisitInputSchema, rawAiOutputSchema } from "./schemas";
 import { SAFETY_DISCLAIMER, scanForUnsafeLanguage } from "./safety";
 import type { CareNestAiResult, ProcessVisitInput, ProcessVisitResult } from "./types";
+
+/**
+ * Upper bound on transcript length accepted by processVisit(), in
+ * characters. A CHW field visit transcript is realistically a few thousand
+ * characters at most; 20,000 (~3,500-4,000 words) is generous headroom
+ * while still bounding provider token cost/latency and rejecting obviously
+ * wrong input (e.g. a whole document pasted in by mistake) before it ever
+ * reaches the network.
+ */
+export const MAX_TRANSCRIPT_LENGTH = 20_000;
 
 function issueDetails(issues: { path: PropertyKey[]; message: string }[]) {
   return issues.map((issue) => ({
@@ -121,15 +131,41 @@ export function createAiService(provider: AiProvider): {
   processVisit: (input: ProcessVisitInput) => Promise<ProcessVisitResult>;
 } {
   async function processVisit(input: ProcessVisitInput): Promise<ProcessVisitResult> {
-    const transcript = input.transcript?.trim() ?? "";
+    // Validate the shape of the input itself before touching its contents —
+    // catches a malformed/garbage patientContext or unexpected extra fields
+    // (e.g. a caller mistakenly forwarding something like organizationId)
+    // with a clear, typed error instead of silently feeding bad data into
+    // the prompt.
+    const parsedInput = processVisitInputSchema.safeParse(input);
+    if (!parsedInput.success) {
+      return {
+        success: false,
+        error: {
+          code: "INVALID_INPUT",
+          message: "processVisit input did not match the expected shape.",
+          details: issueDetails(parsedInput.error.issues),
+        },
+      };
+    }
+
+    const transcript = parsedInput.data.transcript.trim();
     if (!transcript) {
       return {
         success: false,
         error: { code: "EMPTY_TRANSCRIPT", message: "Transcript is empty; nothing to structure." },
       };
     }
+    if (transcript.length > MAX_TRANSCRIPT_LENGTH) {
+      return {
+        success: false,
+        error: {
+          code: "TRANSCRIPT_TOO_LONG",
+          message: `Transcript exceeds the maximum allowed length of ${MAX_TRANSCRIPT_LENGTH} characters.`,
+        },
+      };
+    }
 
-    const { system, user } = buildPrompt({ transcript, patientContext: input.patientContext });
+    const { system, user } = buildPrompt({ transcript, patientContext: parsedInput.data.patientContext });
 
     let rawText: string;
     try {

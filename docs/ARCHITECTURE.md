@@ -70,7 +70,8 @@ documentation — update it when the shape of the system changes.
   writes.
 - **Repository scoping:** every repository function that accesses organization-owned data
   takes `organizationId` explicitly (e.g. `getPatient(organizationId, patientId)`). No RLS;
-  scoping is enforced in SQL via the `organizationId` parameter.
+  scoping is enforced in SQL via the `organizationId` parameter. Cross-organization
+  lookups return `NOT_FOUND` — other orgs' rows are never surfaced.
 - **Migrations:** plain SQL files in `apps/api/migrations/NNN_*.sql`, applied in filename
   order by `src/db/migrate.ts`. Applied files are tracked in `schema_migrations` so each
   file runs exactly once, inside a transaction. The migration runner runs via
@@ -152,15 +153,29 @@ sections.
   migrations on deploy (`npm run db:migrate`).
 - No queues, Redis, or Docker containers are required in the MVP.
 
-## Future feature modules (not implemented in the foundation)
+## Future feature modules (not implemented yet)
 
-- Auth & organization management
-- Patients
 - Visits (capture, STT, AI structuring, review/confirm)
 - Follow-ups
 - Patient timeline
 - Sync (offline queue → backend)
 - Supervisor dashboard
 
-Each will slot into the existing folders (routes / controllers / services / repositories /
-schemas) without restructuring the workspace.
+Implemented so far: auth, organization user management (CHW onboarding), and
+organization-scoped patient management. Each domain lives in its own
+routes / controllers / services / repositories / schemas files under
+`apps/api/src/` without restructuring the workspace.
+
+### Domain notes
+
+- **Organization user management** (`users` routes): ADMIN creates/list/updates/
+  deactivates/reactivates org users; SUPERVISOR is read-only; CHW has no access.
+  Onboarding uses an ADMIN-supplied initial password (no public registration, no
+  invitation flow). Deactivation immediately revokes access because `authenticate`
+  re-checks `active` in the database on every request; no patient/visit records are
+  deleted.
+- **Patients**: org-scoped CRUD. Create is retry-safe for offline sync: `createPatient`
+  uses `ON CONFLICT (organization_id, client_generated_id) DO NOTHING` and returns the
+  existing row on replay. `client_generated_id` is the single idempotency concept and is
+  immutable. `date_of_birth` is read back via `to_char(..., 'YYYY-MM-DD')` so the API
+  never exposes time-shifted JS Date serialization.

@@ -19,13 +19,15 @@
  *     // manually. Never throws for expected failure modes.
  *   }
  */
-export { assembleAndValidate, createAiService, processVisit } from "./service";
+export { assembleAndValidate, createAiService, processVisit, MAX_TRANSCRIPT_LENGTH } from "./service";
 export { createAiProvider } from "./providers";
 export { AiProviderNotConfiguredError } from "./provider";
 export type { AiGenerateRequest, AiProvider } from "./provider";
 export {
   attributedItemSchema,
   careNestAiResultSchema,
+  patientContextSchema,
+  processVisitInputSchema,
   rawAiOutputSchema,
   sourceTypeSchema,
 } from "./schemas";

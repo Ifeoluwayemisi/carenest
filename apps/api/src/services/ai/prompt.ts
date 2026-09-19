@@ -20,6 +20,7 @@ STRICT RULES — never break these:
 - "reportedConcerns" must only restate what the patient or CHW explicitly said in the transcript, tagged with who said it: "PATIENT_REPORTED" for something the patient said, "CHW_RECORDED" for the CHW's own observation or note. Do not add anything not present in the transcript.
 - "missingInformation" should name standard documentation fields that are absent from this transcript (for example: "duration of symptoms not mentioned", "no temperature recorded"). Never speculate about what might be medically wrong with the patient.
 - "suggestedFollowUps" may only suggest non-clinical next steps, such as scheduling a re-visit, referring to a facility for in-person evaluation, or verifying missing information at the next visit. Never suggest a treatment, medication, or diagnostic test.
+- When writing "summary", phrase findings as what was reported or observed (e.g. "the patient reported a cough") rather than asserting them as confirmed facts (avoid phrasing like "the patient has X").
 - If the transcript has no reportable content for a field, return an empty array for it — never fabricate content to fill it.
 - If the transcript is unclear, contradictory, or too short to structure meaningfully, still return the JSON shape with your best-effort summary and empty/partial arrays as appropriate — do not refuse and do not add commentary outside the JSON.
 

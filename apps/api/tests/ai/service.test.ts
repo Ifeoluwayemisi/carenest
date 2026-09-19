@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { AiProviderNotConfiguredError, type AiProvider } from "../../src/services/ai/provider";
-import { assembleAndValidate, createAiService } from "../../src/services/ai/service";
+import { assembleAndValidate, createAiService, MAX_TRANSCRIPT_LENGTH } from "../../src/services/ai/service";
 
 const validRawJson = JSON.stringify({
   summary: "Patient reported a persistent cough and mild fatigue.",
@@ -187,5 +187,68 @@ describe("createAiService(provider).processVisit", () => {
 
     expect(result.success).toBe(false);
     if (!result.success) expect(result.error.code).toBe("PROVIDER_NOT_CONFIGURED");
+  });
+
+  it("returns TRANSCRIPT_TOO_LONG without calling the provider", async () => {
+    const generate = vi.fn();
+    const { processVisit: run } = createAiService(fakeProvider(generate));
+
+    const result = await run({ transcript: "x".repeat(MAX_TRANSCRIPT_LENGTH + 1) });
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error.code).toBe("TRANSCRIPT_TOO_LONG");
+    expect(generate).not.toHaveBeenCalled();
+  });
+
+  it("accepts a transcript exactly at the length limit", async () => {
+    const { processVisit: run } = createAiService(fakeProvider(async () => validRawJson));
+
+    const result = await run({ transcript: "x".repeat(MAX_TRANSCRIPT_LENGTH) });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("returns INVALID_INPUT for a malformed patientContext without calling the provider", async () => {
+    const generate = vi.fn();
+    const { processVisit: run } = createAiService(fakeProvider(generate));
+
+    const result = await run({
+      transcript: "Patient reports a cough.",
+      // @ts-expect-error deliberately wrong type to prove runtime validation
+      // catches what TypeScript alone would not at a real module boundary
+      // (e.g. data deserialized from JSON without validation).
+      patientContext: { ageYears: "thirty-four" },
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error.code).toBe("INVALID_INPUT");
+    expect(generate).not.toHaveBeenCalled();
+  });
+
+  it("returns INVALID_INPUT for an unexpected top-level field (e.g. a forwarded organizationId)", async () => {
+    const generate = vi.fn();
+    const { processVisit: run } = createAiService(fakeProvider(generate));
+
+    const result = await run({
+      transcript: "Patient reports a cough.",
+      // @ts-expect-error deliberately extra field to prove it's rejected,
+      // not silently absorbed.
+      organizationId: "org-123",
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error.code).toBe("INVALID_INPUT");
+    expect(generate).not.toHaveBeenCalled();
+  });
+
+  it("returns EMPTY_TRANSCRIPT (not INVALID_INPUT) for whitespace-only transcript", () => {
+    // EMPTY_TRANSCRIPT is a more specific, actionable code than a generic
+    // schema failure — confirms the two checks don't shadow each other.
+    return createAiService(fakeProvider(vi.fn()))
+      .processVisit({ transcript: "   \n\t  " })
+      .then((result) => {
+        expect(result.success).toBe(false);
+        if (!result.success) expect(result.error.code).toBe("EMPTY_TRANSCRIPT");
+      });
   });
 });
