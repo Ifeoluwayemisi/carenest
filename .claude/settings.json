@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(echo \"BUILD_EXIT=$?\")",
+      "Bash(npm test *)",
+      "WebFetch(domain:console.groq.com)",
+      "WebSearch",
+      "Bash(rm -rf /c/Users/Racheal/AppData/Local/Temp/claude/c--Users-Racheal-Desktop-Personal-Projects-hackathon-carenest/0aa18975-9898-4d0d-be9e-e12aca9ac475/scratchpad/verify-stt)",
+      "Bash(mkdir -p /c/Users/Racheal/AppData/Local/Temp/claude/c--Users-Racheal-Desktop-Personal-Projects-hackathon-carenest/0aa18975-9898-4d0d-be9e-e12aca9ac475/scratchpad/verify-stt)",
+      "Bash(cp -r /c/Users/Racheal/Desktop/Personal_Projects/hackathon/carenest/apps/api /c/Users/Racheal/AppData/Local/Temp/claude/c--Users-Racheal-Desktop-Personal-Projects-hackathon-carenest/0aa18975-9898-4d0d-be9e-e12aca9ac475/scratchpad/verify-stt/api)",
+      "Bash(rm -rf /c/Users/Racheal/AppData/Local/Temp/claude/c--Users-Racheal-Desktop-Personal-Projects-hackathon-carenest/0aa18975-9898-4d0d-be9e-e12aca9ac475/scratchpad/verify-stt/api/node_modules)",
+      "Read(//c/Users/Racheal/AppData/Local/Temp/claude/c--Users-Racheal-Desktop-Personal-Projects-hackathon-carenest/0aa18975-9898-4d0d-be9e-e12aca9ac475/scratchpad/verify-stt/api/src/services/**)",
+      "Bash(DST=\"/c/Users/Racheal/AppData/Local/Temp/claude/c--Users-Racheal-Desktop-Personal-Projects-hackathon-carenest/0aa18975-9898-4d0d-be9e-e12aca9ac475/scratchpad/verify-stt\" *)",
+      "Read(//c/Users/Racheal/AppData/Local/Temp/claude/c--Users-Racheal-Desktop-Personal-Projects-hackathon-carenest/0aa18975-9898-4d0d-be9e-e12aca9ac475/scratchpad/verify-stt/api/**)",
+      "Bash(echo \"TYPECHECK_EXIT=$?\")",
+      "Bash(echo \"LINT_EXIT=$?\")",
+      "Bash(rm -rf /c/Users/Racheal/AppData/Local/Temp/claude/c--Users-Racheal-Desktop-Personal-Projects-hackathon-carenest/0aa18975-9898-4d0d-be9e-e12aca9ac475/scratchpad/verify-stt/api/src /c/Users/Racheal/AppData/Local/Temp/claude/c--Users-Racheal-Desktop-Personal-Projects-hackathon-carenest/0aa18975-9898-4d0d-be9e-e12aca9ac475/scratchpad/verify-stt/api/tests)",
+      "Bash(cp -r /c/Users/Racheal/Desktop/Personal_Projects/hackathon/carenest/apps/api/src /c/Users/Racheal/AppData/Local/Temp/claude/c--Users-Racheal-Desktop-Personal-Projects-hackathon-carenest/0aa18975-9898-4d0d-be9e-e12aca9ac475/scratchpad/verify-stt/api/src)",
+      "Bash(cp -r /c/Users/Racheal/Desktop/Personal_Projects/hackathon/carenest/apps/api/tests /c/Users/Racheal/AppData/Local/Temp/claude/c--Users-Racheal-Desktop-Personal-Projects-hackathon-carenest/0aa18975-9898-4d0d-be9e-e12aca9ac475/scratchpad/verify-stt/api/tests)",
+      "Bash(rm -f /c/Users/Racheal/AppData/Local/Temp/claude/c--Users-Racheal-Desktop-Personal-Projects-hackathon-carenest/0aa18975-9898-4d0d-be9e-e12aca9ac475/scratchpad/verify-stt/api/tmp-auth-repro.ts)",
+      "Bash(npm run *)"
+    ]
+  }
+}
