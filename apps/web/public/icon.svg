@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="128" fill="#0f766e"/>
+  <!-- Gentle nesting curves -->
+  <path d="M128 320c20 48 72 80 128 80s108-32 128-80c-24 16-64 28-128 28s-104-12-128-28z" fill="#99f6e4"/>
+  <path d="M160 270c18 36 56 60 96 60s78-24 96-60c-18 12-48 20-96 20s-78-8-96-20z" fill="#5eead4"/>
+  <!-- Healthcare cross center -->
+  <rect x="232" y="140" width="48" height="110" rx="12" fill="#ffffff"/>
+  <rect x="201" y="171" width="110" height="48" rx="12" fill="#ffffff"/>
+  <!-- Heartbeat / Story accent dot -->
+  <circle cx="256" cy="110" r="14" fill="#5eead4"/>
+</svg>
