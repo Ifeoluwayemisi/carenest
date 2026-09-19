@@ -9,7 +9,7 @@ import { env } from "../../config/env";
  * requires touching shared foundation config.
  */
 const aiEnvSchema = z.object({
-  GROQ_MODEL: z.string().min(1).default("llama-3.3-70b-versatile"),
+  GROQ_MODEL: z.string().min(1).default("openai/gpt-oss-120b"),
   GROQ_API_BASE_URL: z.string().url().default("https://api.groq.com/openai/v1/chat/completions"),
   AI_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().default(20000),
 });
