@@ -15,7 +15,7 @@ export const AIProcessingModal: React.FC<AIProcessingModalProps> = ({
 
   useEffect(() => {
     if (!isOpen) {
-      setCurrentStepIndex(0);
+      void Promise.resolve().then(() => setCurrentStepIndex(0));
       return;
     }
 

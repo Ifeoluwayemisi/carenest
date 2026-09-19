@@ -1,120 +1,107 @@
-import React from 'react';
-import { 
-  ShieldCheck, 
-  Users, 
-  Activity, 
-  CalendarClock, 
-  CloudOff 
-} from 'lucide-react';
-import { storage } from '../services/storage';
+'use client';
+
+import React, { useEffect, useState } from 'react';
+import { Users, UserCheck, Activity, CalendarDays, ClipboardList, CheckCircle2 } from 'lucide-react';
+import type { DashboardSummary } from '@/types/domain';
+import * as dashboardService from '@/services/dashboard.service';
+import { ApiError } from '@/lib/api';
+import { LoadingState, ErrorState } from '@/components/StateViews';
+
+const STATUS_STYLE: Record<string, { bg: string; text: string }> = {
+  DRAFT: { bg: 'var(--color-offline-bg)', text: 'var(--color-offline-text)' },
+  UNDER_REVIEW: { bg: 'var(--color-offline-bg)', text: 'var(--color-offline-text)' },
+  CONFIRMED: { bg: 'var(--color-online-bg)', text: 'var(--color-online-text)' },
+};
+
+const MetricCard: React.FC<{ label: string; value: number; icon: React.ElementType; hint?: string }> = ({
+  label,
+  value,
+  icon: Icon,
+  hint,
+}) => (
+  <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+    <div className="flex items-center justify-between text-slate-500 mb-1">
+      <span className="text-xs font-medium">{label}</span>
+      <Icon className="w-4 h-4" style={{ color: 'var(--color-primary)' }} />
+    </div>
+    <div className="text-2xl font-bold text-slate-900">{value}</div>
+    {hint && <div className="text-[10px] text-slate-500 mt-0.5">{hint}</div>}
+  </div>
+);
 
 export const SupervisorView: React.FC = () => {
-  const unsynced = storage.getUnsyncedCount();
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const chwTeam = [
-    { name: 'Amina Bello', area: 'Ajegunle Ward 3', visitsToday: 8, status: 'Active (Field)' },
-    { name: 'Chukwudi Eze', area: 'Boundary Market Zone', visitsToday: 7, status: 'Active (Clinic)' },
-    { name: 'Zainab Ibrahim', area: 'Orodu Settlement', visitsToday: 6, status: 'Active (Field)' },
-    { name: 'Babatunde Fashola', area: 'Kirikiri Canal Zone', visitsToday: 9, status: 'Active (Field)' },
-    { name: 'Grace Danjuma', area: 'Alaba Suru Quarter', visitsToday: 5, status: 'Active (Field)' },
-    { name: 'Emeka Obi', area: 'Bale Road Zone', visitsToday: 7, status: 'Active (Field)' },
-  ];
+  const load = () => {
+    setLoading(true);
+    setError(null);
+    dashboardService
+      .getDashboardSummary()
+      .then(setSummary)
+      .catch((err) =>
+        setError(
+          err instanceof ApiError && err.status === 403
+            ? "You don't have access to the supervisor dashboard."
+            : 'Could not load the dashboard summary.',
+        ),
+      )
+      .finally(() => setLoading(false));
+  };
+
+  // Deferred to a microtask so setLoading(true) inside load() doesn't run
+  // synchronously in the effect body (react-hooks/set-state-in-effect).
+  useEffect(() => {
+    void Promise.resolve().then(load);
+  }, []);
+
+  if (loading) return <LoadingState label="Loading dashboard…" />;
+  if (error || !summary) return <ErrorState message={error ?? 'No data available.'} onRetry={load} />;
 
   return (
     <div className="space-y-6 pb-20 md:pb-6">
-      {/* Top Banner */}
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-900">
-              Facility Supervisor Overview
-            </h1>
-            <span className="text-[10px] uppercase font-bold tracking-wider bg-slate-100 text-slate-700 px-2 py-0.5 rounded">
-              Supervisor Area
-            </span>
-          </div>
-          <p className="text-xs sm:text-sm text-slate-500">
-            Ajegunle Community Health Centre • Ajeromi-Ifelodun LGA Supervision
-          </p>
-        </div>
-
-        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-teal-50 text-teal-800 border border-teal-200 text-xs font-semibold">
-          <ShieldCheck className="w-4 h-4 text-teal-600" />
-          <span>Facility In-Charge Active</span>
-        </div>
+      <div>
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Supervisor Dashboard</h1>
+        <p className="text-xs sm:text-sm text-slate-500">Organization overview</p>
       </div>
 
-      {/* Aggregate Metric Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 mb-1">
-            <span className="text-xs font-medium">Active CHWs</span>
-            <Users className="w-4 h-4 text-teal-600" />
-          </div>
-          <div className="text-2xl font-bold text-slate-900">8</div>
-          <div className="text-[10px] text-teal-700 font-semibold mt-0.5">Full field coverage</div>
-        </div>
-
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 mb-1">
-            <span className="text-xs font-medium">Visits Today</span>
-            <Activity className="w-4 h-4 text-slate-600" />
-          </div>
-          <div className="text-2xl font-bold text-slate-900">42</div>
-          <div className="text-[10px] text-slate-500 mt-0.5">Across 6 sub-zones</div>
-        </div>
-
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 mb-1">
-            <span className="text-xs font-medium">Pending Follow-ups</span>
-            <CalendarClock className="w-4 h-4 text-amber-600" />
-          </div>
-          <div className="text-2xl font-bold text-slate-900">4</div>
-          <div className="text-[10px] text-amber-700 font-semibold mt-0.5">Scheduled this week</div>
-        </div>
-
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 mb-1">
-            <span className="text-xs font-medium">Unsynced Records</span>
-            <CloudOff className="w-4 h-4 text-slate-600" />
-          </div>
-          <div className="text-2xl font-bold text-slate-900">{unsynced}</div>
-          <div className="text-[10px] text-slate-500 mt-0.5">Awaiting connectivity</div>
-        </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <MetricCard label="Total Patients" value={summary.totalPatients} icon={Users} />
+        <MetricCard label="Total CHWs" value={summary.totalCHWs} icon={UserCheck} />
+        <MetricCard label="Visits Today" value={summary.visitsToday} icon={Activity} />
+        <MetricCard label="Visits This Week" value={summary.visitsThisWeek} icon={CalendarDays} />
+        <MetricCard label="Pending Follow-ups" value={summary.pendingFollowUps} icon={ClipboardList} />
+        <MetricCard label="Completed Follow-ups" value={summary.completedFollowUps} icon={CheckCircle2} />
       </div>
 
-      {/* Field Worker Table */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
-        <div>
-          <h3 className="text-base font-bold text-slate-900">Active Field Workers</h3>
-          <p className="text-xs text-slate-500">Live documentation status across community wards</p>
-        </div>
-
-        <div className="divide-y divide-slate-100">
-          {chwTeam.map((chw, i) => (
-            <div key={i} className="py-3 flex items-center justify-between text-xs">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-teal-50 text-teal-800 flex items-center justify-center font-bold">
-                  {chw.name.split(' ').map(n => n[0]).join('')}
+      <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
+        <h2 className="text-sm font-bold text-slate-900">Recent Activity</h2>
+        {summary.recentVisits.length === 0 ? (
+          <p className="text-xs text-slate-500 py-4 text-center">No recent visits.</p>
+        ) : (
+          <div className="divide-y divide-slate-100">
+            {summary.recentVisits.map((visit) => {
+              const style = STATUS_STYLE[visit.status] ?? STATUS_STYLE.DRAFT;
+              return (
+                <div key={visit.id} className="py-2.5 flex items-center justify-between gap-2">
+                  <div>
+                    <span className="text-sm font-semibold text-slate-800">{visit.patientName}</span>
+                    <p className="text-xs text-slate-500">
+                      {visit.chwName} • {new Date(visit.visitedAt).toLocaleString()}
+                    </p>
+                  </div>
+                  <span
+                    className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0"
+                    style={{ backgroundColor: style.bg, color: style.text }}
+                  >
+                    {visit.status}
+                  </span>
                 </div>
-                <div>
-                  <div className="font-bold text-slate-900">{chw.name}</div>
-                  <div className="text-slate-500">{chw.area}</div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4 text-right">
-                <div>
-                  <span className="font-bold text-slate-800">{chw.visitsToday}</span> visits
-                </div>
-                <span className="inline-flex items-center gap-1 text-[11px] text-emerald-700 font-medium bg-emerald-50 px-2 py-0.5 rounded-full">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                  {chw.status}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

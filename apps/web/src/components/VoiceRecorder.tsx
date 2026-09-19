@@ -1,102 +1,94 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Square, Play, Sparkles, Volume2 } from 'lucide-react';
+'use client';
+
+import React, { useEffect, useRef, useState } from 'react';
+import { Mic, Square, Volume2, AlertCircle, Trash2 } from 'lucide-react';
 
 interface VoiceRecorderProps {
-  onTranscriptComplete: (transcript: string) => void;
-  currentText: string;
+  /** Called once recording stops with the raw audio — this is what actually
+   * gets sent to POST /api/v1/visits for real Groq Whisper transcription.
+   * Nothing here fakes a transcript client-side. */
+  onAudioReady: (blob: Blob, mimeType: string) => void;
+  onClear: () => void;
+  hasRecording: boolean;
+  disabled?: boolean;
+}
+
+/** Picks a MIME type the browser's MediaRecorder actually supports, in the
+ * order the backend's STT module prefers (see services/speech/validation.ts). */
+function pickSupportedMimeType(): string | null {
+  const candidates = ['audio/webm', 'audio/mp4', 'audio/ogg'];
+  for (const type of candidates) {
+    if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported?.(type)) {
+      return type;
+    }
+  }
+  return null;
 }
 
 export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
-  onTranscriptComplete,
-  currentText,
+  onAudioReady,
+  onClear,
+  hasRecording,
+  disabled,
 }) => {
   const [isRecording, setIsRecording] = useState(false);
-  const [recordingDuration, setRecordingDuration] = useState(0);
-  const [transcript, setTranscript] = useState(currentText);
-  const timerRef = useRef<any>(null);
-  const recognitionRef = useRef<any>(null);
+  const [duration, setDuration] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
-  // Synchronize incoming transcript changes
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   useEffect(() => {
-    if (currentText && currentText !== transcript) {
-      setTranscript(currentText);
-    }
-  }, [currentText]);
-
-  // Speech Recognition Initialization
-  useEffect(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      const recognition = new SpeechRecognition();
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      recognition.lang = 'en-NG'; // Nigerian English locale preference
-
-      recognition.onresult = (event: any) => {
-        let fullSpeech = '';
-        for (let i = 0; i < event.results.length; i++) {
-          fullSpeech += event.results[i][0].transcript + ' ';
-        }
-        const clean = fullSpeech.trim();
-        setTranscript(clean);
-        onTranscriptComplete(clean);
-      };
-
-      recognition.onerror = () => {
-        // Silent fallback to simulated timer
-      };
-
-      recognitionRef.current = recognition;
-    }
-
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
+      streamRef.current?.getTracks().forEach((t) => t.stop());
     };
-  }, [onTranscriptComplete]);
+  }, []);
 
-  const startRecording = () => {
-    setIsRecording(true);
-    setRecordingDuration(0);
+  const startRecording = async () => {
+    setError(null);
+    if (typeof MediaRecorder === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+      setError('Voice recording is not supported in this browser. Use text entry instead.');
+      return;
+    }
+    const mimeType = pickSupportedMimeType();
+    if (!mimeType) {
+      setError('No supported audio format available on this device. Use text entry instead.');
+      return;
+    }
 
-    // Audio timer
-    timerRef.current = setInterval(() => {
-      setRecordingDuration(prev => prev + 1);
-    }, 1000);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      chunksRef.current = [];
 
-    // Start speech recognition if supported
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.start();
-      } catch {
-        // Recognition already started or not allowed
-      }
+      const recorder = new MediaRecorder(stream, { mimeType });
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+      recorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: mimeType });
+        onAudioReady(blob, mimeType);
+        streamRef.current?.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      };
+
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+      setIsRecording(true);
+      setDuration(0);
+      timerRef.current = setInterval(() => setDuration((d) => d + 1), 1000);
+    } catch {
+      setError('Microphone access was denied. Allow microphone access, or use text entry instead.');
     }
   };
 
   const stopRecording = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
     setIsRecording(false);
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-    }
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch {}
-    }
-
-    // If no voice text was captured (e.g. microphone permission denied or silent),
-    // provide the realistic Maria Okafor demo transcript so the user flow never gets stuck!
-    if (!transcript.trim()) {
-      const sample = "I visited Maria today. She has been having headaches for three days. She says she has not been able to get her medication. Her temperature is 37.4 degrees and blood pressure is 130 over 85.";
-      setTranscript(sample);
-      onTranscriptComplete(sample);
-    }
-  };
-
-  const insertDemoTranscript = () => {
-    const sample = "I visited Maria today. She has been having headaches for three days. She says she has not been able to get her medication. Her temperature is 37.4 degrees and blood pressure is 130 over 85.";
-    setTranscript(sample);
-    onTranscriptComplete(sample);
+    mediaRecorderRef.current?.stop();
   };
 
   const formatTimer = (seconds: number) => {
@@ -107,36 +99,30 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isRecording ? 'bg-rose-100 text-rose-600 animate-pulse' : 'bg-teal-50 text-teal-700'}`}>
-            <Volume2 className="w-4 h-4" />
-          </div>
-          <div>
-            <h3 className="text-sm font-semibold text-slate-800">Voice Documentation</h3>
-            <p className="text-xs text-slate-500">Record in English, Pidgin, or natural speech</p>
-          </div>
-        </div>
-
-        {/* Demo filler shortcut for quick hackathon presentation */}
-        <button
-          type="button"
-          onClick={insertDemoTranscript}
-          className="text-xs font-medium text-teal-700 bg-teal-50 hover:bg-teal-100 px-2.5 py-1 rounded-full border border-teal-200 flex items-center gap-1 transition-colors"
+      <div className="flex items-center gap-2">
+        <div
+          className={`w-8 h-8 rounded-full flex items-center justify-center ${
+            isRecording ? 'bg-rose-100 text-rose-600 animate-pulse' : ''
+          }`}
+          style={!isRecording ? { backgroundColor: 'var(--color-accent-light)', color: 'var(--color-primary)' } : undefined}
         >
-          <Sparkles className="w-3 h-3" />
-          Load Demo Voice Note
-        </button>
+          <Volume2 className="w-4 h-4" />
+        </div>
+        <div>
+          <h3 className="text-sm font-semibold text-slate-800">Voice Documentation</h3>
+          <p className="text-xs text-slate-500">Recorded audio is sent for real transcription</p>
+        </div>
       </div>
 
-      {/* Main Microphone Action Area */}
       <div className="flex flex-col items-center justify-center py-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-        {!isRecording ? (
+        {!isRecording && !hasRecording && (
           <div className="text-center space-y-3">
             <button
               type="button"
               onClick={startRecording}
-              className="w-16 h-16 rounded-full bg-teal-600 hover:bg-teal-700 text-white flex items-center justify-center shadow-md hover:shadow-lg active:scale-95 transition-all mx-auto"
+              disabled={disabled}
+              className="w-16 h-16 rounded-full text-white flex items-center justify-center shadow-md hover:shadow-lg active:scale-95 transition-all mx-auto disabled:opacity-50"
+              style={{ backgroundColor: 'var(--color-accent)' }}
               aria-label="Tap to speak"
             >
               <Mic className="w-8 h-8" />
@@ -144,11 +130,13 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
             <div>
               <p className="text-sm font-semibold text-slate-800">Tap to speak</p>
               <p className="text-xs text-slate-500 max-w-xs px-4 mt-0.5">
-                Describe the visit naturally. CareNest will organize your notes for review.
+                Describe the visit naturally. It will be transcribed and structured for your review.
               </p>
             </div>
           </div>
-        ) : (
+        )}
+
+        {isRecording && (
           <div className="text-center space-y-3">
             <button
               type="button"
@@ -161,39 +149,47 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
             <div className="space-y-1">
               <div className="flex items-center justify-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
-                <p className="text-sm font-bold text-rose-600">Listening...</p>
-                <span className="text-sm font-mono font-bold text-slate-700">{formatTimer(recordingDuration)}</span>
-              </div>
-              {/* Animated audio bars */}
-              <div className="flex items-center justify-center gap-1 h-6">
-                {[40, 75, 95, 60, 85, 45, 90, 65, 80, 50].map((h, i) => (
-                  <span
-                    key={i}
-                    className="w-1 bg-rose-400 rounded-full animate-bounce"
-                    style={{
-                      height: `${h}%`,
-                      animationDelay: `${i * 0.1}s`,
-                      animationDuration: '0.8s',
-                    }}
-                  />
-                ))}
+                <p className="text-sm font-bold text-rose-600">Recording…</p>
+                <span className="text-sm font-mono font-bold text-slate-700">{formatTimer(duration)}</span>
               </div>
               <p className="text-xs text-slate-500">Tap square button when finished</p>
             </div>
           </div>
         )}
+
+        {!isRecording && hasRecording && (
+          <div className="text-center space-y-3">
+            <div
+              className="w-16 h-16 rounded-full flex items-center justify-center mx-auto"
+              style={{ backgroundColor: 'var(--color-online-bg)', color: 'var(--color-online-text)' }}
+            >
+              <Mic className="w-8 h-8" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold" style={{ color: 'var(--color-online-text)' }}>
+                Recording captured ({formatTimer(duration)})
+              </p>
+              <p className="text-xs text-slate-500 mt-0.5">Ready to submit for transcription.</p>
+            </div>
+            <button
+              type="button"
+              onClick={onClear}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-rose-600"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Discard &amp; re-record
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Real-time or generated transcript preview */}
-      {transcript && (
-        <div className="bg-teal-50/60 rounded-xl p-3.5 border border-teal-200/70 text-left">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-xs font-semibold uppercase tracking-wider text-teal-800">Captured Voice Transcript</span>
-            <span className="text-[11px] text-teal-600 font-medium">Auto-transcribed</span>
-          </div>
-          <p className="text-xs sm:text-sm text-slate-700 italic leading-relaxed">
-            "{transcript}"
-          </p>
+      {error && (
+        <div
+          className="flex items-start gap-2 p-3 rounded-xl text-xs font-medium"
+          style={{ backgroundColor: 'var(--color-urgent-bg)', color: 'var(--color-urgent-text)' }}
+        >
+          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+          <span>{error}</span>
         </div>
       )}
     </div>

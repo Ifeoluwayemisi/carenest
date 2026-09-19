@@ -1,21 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { Download, X, Smartphone, CheckCircle } from 'lucide-react';
+import { Download, X, Smartphone } from 'lucide-react';
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => void;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
 
 export const PWAInstallBanner: React.FC = () => {
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showBanner, setShowBanner] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
 
   useEffect(() => {
     // Check if already in standalone mode
-    if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone) {
-      setIsInstalled(true);
+    const nav = window.navigator as Navigator & { standalone?: boolean };
+    if (window.matchMedia('(display-mode: standalone)').matches || nav.standalone) {
+      // Deferred to a microtask (react-hooks/set-state-in-effect forbids a
+      // synchronous setState call in the effect body).
+      void Promise.resolve().then(() => setIsInstalled(true));
       return;
     }
 
-    const handler = (e: any) => {
+    const handler = (e: Event) => {
       e.preventDefault();
-      setDeferredPrompt(e);
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
       setShowBanner(true);
     };
 

@@ -1,4 +1,5 @@
 import type { ApiEnvelope } from "@/types/api";
+import { clearToken, getToken } from "./auth-storage";
 
 /**
  * API error raised when the backend returns a non-2xx response.
@@ -24,6 +25,11 @@ export class ApiError extends Error {
  */
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
+/** Fired on window when a request comes back 401 — AuthContext listens for
+ * this to force a logout/redirect-to-login without every call site having to
+ * know about auth state. */
+export const UNAUTHORIZED_EVENT = "carenest:unauthorized";
+
 async function parseErrorBody(
   status: number,
   body: ApiEnvelope<unknown> | null,
@@ -36,21 +42,43 @@ async function parseErrorBody(
 }
 
 /**
- * Small typed JSON fetch wrapper. Feature service modules (under src/services/)
- * should use this so URLs, headers, and error handling stay in one place.
+ * Small typed fetch wrapper. Feature service modules (under src/services/)
+ * should use this so URLs, headers, auth, and error handling stay in one
+ * place. Attaches the bearer token automatically when present. Body may be a
+ * plain object (sent as JSON) or a FormData instance (sent as multipart —
+ * the browser sets its own Content-Type with boundary, so we must NOT set
+ * one ourselves in that case, or the multipart upload breaks).
  */
-export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+export async function apiFetch<T>(
+  path: string,
+  init?: Omit<RequestInit, "body"> & { body?: unknown },
+): Promise<T> {
+  const token = getToken();
+  const isFormData = init?.body instanceof FormData;
+
+  const headers: Record<string, string> = {
+    ...(isFormData ? {} : { "Content-Type": "application/json" }),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...((init?.headers as Record<string, string>) ?? {}),
+  };
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
+    headers,
+    body: isFormData
+      ? (init?.body as FormData)
+      : init?.body !== undefined
+        ? JSON.stringify(init.body)
+        : undefined,
   });
 
   const body = (await response.json().catch(() => null)) as unknown;
 
   if (!response.ok) {
+    if (response.status === 401 && typeof window !== "undefined") {
+      clearToken();
+      window.dispatchEvent(new CustomEvent(UNAUTHORIZED_EVENT));
+    }
     throw await parseErrorBody(response.status, body as ApiEnvelope<unknown> | null);
   }
 

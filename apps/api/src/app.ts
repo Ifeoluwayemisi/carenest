@@ -8,7 +8,9 @@ import { env } from "./config/env";
 import { loggerOptions } from "./lib/logger";
 import { registerErrorHandling } from "./middlewares/error-handler";
 import { authRoutes } from "./routes/auth.route";
+import { dashboardRoutes } from "./routes/dashboard.route";
 import { docsRoutes } from "./routes/docs.route";
+import { followUpRoutes } from "./routes/follow-ups.route";
 import { healthRoutes } from "./routes/health.route";
 import { patientRoutes } from "./routes/patients.route";
 import { userRoutes } from "./routes/users.route";
@@ -46,6 +48,8 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   void app.register(userRoutes);
   void app.register(patientRoutes);
   void app.register(visitRoutes);
+  void app.register(followUpRoutes);
+  void app.register(dashboardRoutes);
 
   return app;
 }

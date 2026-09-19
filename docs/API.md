@@ -316,6 +316,114 @@ is never overwritten.
 `{ "patientId", "visits": [...newest first by visitedAt], "followUps": [] }`. Timeline
 entries expose `summary` (from `aiGeneratedJson`), `transcript`, `status`, `confirmedAt`.
 
+## Follow-ups / actions (organization-scoped)
+
+Follow-ups are actions flagged to be followed up for a patient. `organizationId` always
+comes from the authenticated user. Statuses match the schema's enum:
+`OPEN` (pending), `COMPLETED`, `CANCELLED`. No reminders, notifications, or recurring
+workflow in the MVP.
+
+### Authorization matrix
+
+| Operation | ADMIN | CHW | SUPERVISOR |
+| --- | --- | --- | --- |
+| Create follow-up | ✅ | ✅ | – |
+| Read patient's follow-ups | ✅ | ✅ | ✅ |
+| Update follow-up | ✅ | ✅ | ✅ |
+
+### `POST /api/v1/follow-ups` (CHW, ADMIN)
+
+**Request body**
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `patientId` | string | Required UUID; must belong to the caller's organization (`404` otherwise) |
+| `visitId` | string? | Optional UUID of the origin visit; must be in the same organization and belong to the same patient (`404`/`400` otherwise) |
+| `summary` | string | Required, 1–2000 chars (the schema's required text field — there is no separate title/description column) |
+| `dueDate` | string? | `YYYY-MM-DD`, must be a real calendar date; `null` clears |
+| `assignedTo` | string? | Optional UUID of an org user (`404` if in another organization); `null` clears |
+| `clientGeneratedId` | string? | UUID idempotency key, unique per organization |
+
+**Offline retry safety**: when `clientGeneratedId` is provided and a follow-up with the
+same `(organizationId, clientGeneratedId)` already exists, the existing follow-up is
+returned (still `201`) instead of inserting a duplicate.
+
+**Response `201`** — `data.followUp`:
+
+```json
+{
+  "success": true,
+  "data": {
+    "followUp": {
+      "id": "…",
+      "organizationId": "…",
+      "patientId": "…",
+      "visitId": null,
+      "assignedTo": null,
+      "summary": "Recheck blood pressure in two weeks.",
+      "dueDate": null,
+      "status": "OPEN",
+      "clientGeneratedId": null,
+      "createdAt": "2026-09-19T12:00:00.000Z",
+      "updatedAt": "2026-09-19T12:00:00.000Z"
+    }
+  }
+}
+```
+
+### `GET /api/v1/patients/:id/follow-ups` (all roles)
+
+Lists the patient's follow-ups in the caller's organization, newest first. Cross-org or
+unknown patient → `404 NOT_FOUND`.
+
+**Response `200`** — `data.followUps: []` (items shaped like `data.followUp`).
+
+### `PATCH /api/v1/follow-ups/:id` (all roles)
+
+Partial update of `summary`, `status` (`OPEN` | `COMPLETED` | `CANCELLED`), `dueDate`,
+`assignedTo` (send `null` to clear optional fields). `patientId`, `visitId`, and
+`clientGeneratedId` are not mutable. Cross-org/unknown id → `404 NOT_FOUND`.
+
+## Supervisor dashboard
+
+### `GET /api/v1/dashboard/summary` (ADMIN, SUPERVISOR)
+
+Organization-scoped summary for a basic supervisor dashboard. No charts, filters,
+pagination, or analytics — just counts plus the newest 5 visits.
+
+**Response `200`** — `data.summary`:
+
+```json
+{
+  "success": true,
+  "data": {
+    "summary": {
+      "totalPatients": 42,
+      "totalCHWs": 6,
+      "visitsToday": 4,
+      "visitsThisWeek": 18,
+      "pendingFollowUps": 7,
+      "completedFollowUps": 11,
+      "recentVisits": [
+        {
+          "id": "…",
+          "patientId": "…",
+          "patientName": "Fatima Bello",
+          "visitedAt": "2026-09-19T10:00:00.000Z",
+          "chwId": "…",
+          "chwName": "Amina CHW",
+          "status": "CONFIRMED"
+        }
+      ]
+    }
+  }
+}
+```
+
+`recentVisits` is limited to the latest 5 visits. `visitsToday`/`visitsThisWeek` use the
+server clock ("today" and "since the start of the current week"). A CHW requesting this
+endpoint gets `403 FORBIDDEN`.
+
 ### `GET *` / unknown routes
 
 **Response `404`**

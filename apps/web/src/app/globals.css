@@ -14,6 +14,39 @@
   --muted: #71717a;
   --accent: #0f766e;
   --accent-foreground: #ffffff;
+
+  /* CareNest brand tokens — docs/DESIGN.md is the source of truth for these. */
+  --color-primary: #1b4d3e;
+  --color-primary-hover: #143b2f;
+  --color-accent: #2e8b57;
+  --color-accent-light: #e8f4f0;
+
+  --color-bg-app: #f8faf9;
+  --color-surface: #ffffff;
+  --color-border: #e2e8f0;
+  --color-text-main: #0f172a;
+  --color-text-muted: #64748b;
+
+  /* Source attribution — PRD core requirement: keep patient/CHW/AI content
+     visually distinguishable everywhere it's shown. */
+  --color-patient-bg: #eff6ff;
+  --color-patient-border: #3b82f6;
+  --color-patient-text: #1e40af;
+
+  --color-chw-bg: #f0fdf4;
+  --color-chw-border: #22c55e;
+  --color-chw-text: #166534;
+
+  --color-ai-bg: #faf5ff;
+  --color-ai-border: #a855f7;
+  --color-ai-text: #6b21a8;
+
+  --color-offline-bg: #fef3c7;
+  --color-offline-text: #92400e;
+  --color-online-bg: #d1fae5;
+  --color-online-text: #065f46;
+  --color-urgent-bg: #fee2e2;
+  --color-urgent-text: #991b1b;
 }
 
 @theme inline {

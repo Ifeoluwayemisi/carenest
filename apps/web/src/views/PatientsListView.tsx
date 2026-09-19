@@ -1,12 +1,24 @@
-import React, { useState } from 'react';
-import { Search, UserPlus, ChevronRight, Phone, MapPin, Calendar } from 'lucide-react';
-import { Patient } from '../types';
-import { storage } from '../services/storage';
+'use client';
+
+import React, { useEffect, useState } from 'react';
+import { Search, UserPlus, ChevronRight } from 'lucide-react';
+import type { Patient } from '@/types/domain';
+import * as patientsService from '@/services/patients.service';
+import { ApiError } from '@/lib/api';
+import { LoadingState, ErrorState, EmptyState } from '@/components/StateViews';
 import { RegisterPatientModal } from './RegisterPatientModal';
 
 interface PatientsListViewProps {
   onSelectPatient: (patient: Patient) => void;
   onStartVisitForPatient: (patient: Patient) => void;
+}
+
+function patientAge(dateOfBirth: string | null): number | null {
+  if (!dateOfBirth) return null;
+  const dob = new Date(dateOfBirth);
+  if (Number.isNaN(dob.getTime())) return null;
+  const diff = Date.now() - dob.getTime();
+  return Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25));
 }
 
 export const PatientsListView: React.FC<PatientsListViewProps> = ({
@@ -15,47 +27,50 @@ export const PatientsListView: React.FC<PatientsListViewProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
-  const [patients, setPatients] = useState<Patient[]>(storage.getPatients());
+  const [patients, setPatients] = useState<Patient[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Filter patients based on query
-  const filteredPatients = patients.filter((patient) => {
-    const q = searchQuery.toLowerCase().trim();
-    if (!q) return true;
-    return (
-      patient.name.toLowerCase().includes(q) ||
-      patient.patientId.toLowerCase().includes(q) ||
-      patient.phone.includes(q) ||
-      patient.community.toLowerCase().includes(q)
-    );
-  });
+  const fetchPatients = (search: string) => {
+    setLoading(true);
+    setError(null);
+    patientsService
+      .listPatients(search)
+      .then(setPatients)
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load patients.'))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    const handle = setTimeout(() => fetchPatients(searchQuery), searchQuery ? 300 : 0);
+    return () => clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery]);
 
   const handlePatientCreated = (newPatient: Patient) => {
-    setPatients(storage.getPatients());
+    setPatients((prev) => (prev ? [newPatient, ...prev] : [newPatient]));
     onSelectPatient(newPatient);
   };
 
   return (
     <div className="space-y-6 pb-20 md:pb-6">
-      {/* Top action header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Patients</h1>
-          <p className="text-xs sm:text-sm text-slate-500">
-            Registered facility members in Ajegunle Community Health Centre
-          </p>
+          <p className="text-xs sm:text-sm text-slate-500">Patients registered in your organization</p>
         </div>
 
         <button
           type="button"
           onClick={() => setIsRegisterOpen(true)}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-sm transition-all active:scale-[0.98] cursor-pointer shrink-0"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-sm transition-all active:scale-[0.98] shrink-0"
+          style={{ backgroundColor: 'var(--color-accent)' }}
         >
           <UserPlus className="w-4 h-4" />
-          <span>+ Register New Patient</span>
+          <span>Register Patient</span>
         </button>
       </div>
 
-      {/* Large Search Field */}
       <div className="relative">
         <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
           <Search className="h-5 w-5 text-slate-400" />
@@ -64,106 +79,84 @@ export const PatientsListView: React.FC<PatientsListViewProps> = ({
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search by name, patient ID or phone number..."
-          className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:border-transparent shadow-xs transition-all"
+          placeholder="Search by name, ID, or phone…"
+          className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:border-transparent shadow-xs transition-all"
+          style={{ '--tw-ring-color': 'var(--color-primary)' } as React.CSSProperties}
         />
-        {searchQuery && (
-          <button
-            onClick={() => setSearchQuery('')}
-            className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-xs font-semibold text-slate-400 hover:text-slate-600"
-          >
-            Clear
-          </button>
-        )}
       </div>
 
-      {/* Patient Cards List */}
-      <div className="space-y-3">
-        {filteredPatients.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center space-y-3">
-            <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
-              <Search className="w-6 h-6" />
-            </div>
-            <h3 className="text-sm font-bold text-slate-800">No patient found</h3>
-            <p className="text-xs text-slate-500 max-w-sm mx-auto">
-              No matching records for "{searchQuery}". You can register a new patient now.
-            </p>
+      {loading && <LoadingState label="Loading patients…" />}
+      {!loading && error && <ErrorState message={error} onRetry={() => fetchPatients(searchQuery)} />}
+      {!loading && !error && patients && patients.length === 0 && (
+        <EmptyState
+          title={searchQuery ? `No patients matching "${searchQuery}"` : 'No patients yet'}
+          description="Register a patient to start recording visits."
+          action={
             <button
               onClick={() => setIsRegisterOpen(true)}
-              className="px-4 py-2 bg-teal-50 text-teal-700 hover:bg-teal-100 border border-teal-200 rounded-xl text-xs font-semibold"
+              className="px-4 py-2 rounded-xl text-xs font-semibold border"
+              style={{ backgroundColor: 'var(--color-accent-light)', color: 'var(--color-primary)', borderColor: 'var(--color-accent)' }}
             >
-              + Register {searchQuery}
+              Register Patient
             </button>
-          </div>
-        ) : (
-          filteredPatients.map((patient) => {
-            const isHeroDemo = patient.name === 'Maria Okafor';
+          }
+        />
+      )}
 
+      {!loading && !error && patients && patients.length > 0 && (
+        <div className="space-y-3">
+          {patients.map((patient) => {
+            const age = patientAge(patient.dateOfBirth);
             return (
               <div
                 key={patient.id}
                 onClick={() => onSelectPatient(patient)}
-                className={`bg-white rounded-2xl border p-4 sm:p-5 shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 ${
-                  isHeroDemo ? 'border-teal-300 ring-1 ring-teal-200/60 bg-teal-50/20' : 'border-slate-200 hover:border-slate-300'
-                }`}
+                className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs hover:shadow-md hover:border-slate-300 transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
               >
                 <div className="flex items-start sm:items-center gap-3.5">
-                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-sm font-bold shrink-0 ${
-                    isHeroDemo
-                      ? 'bg-teal-700 text-white shadow-sm'
-                      : 'bg-slate-100 text-slate-700'
-                  }`}>
-                    {patient.name.split(' ').map(n => n[0]).join('')}
+                  <div
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center text-sm font-bold shrink-0 text-white"
+                    style={{ backgroundColor: 'var(--color-primary)' }}
+                  >
+                    {patient.firstName[0]}
+                    {patient.lastName[0]}
                   </div>
-
                   <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-base font-bold text-slate-900">{patient.name}</h3>
-                      {isHeroDemo && (
-                        <span className="text-[10px] font-bold uppercase tracking-wider bg-teal-100 text-teal-800 px-2 py-0.5 rounded-full">
-                          Demo Story Hero
+                    <h3 className="text-base font-bold text-slate-900">
+                      {patient.firstName} {patient.lastName}
+                    </h3>
+                    <div className="flex items-center gap-2 text-xs text-slate-600 mt-1 flex-wrap">
+                      {age !== null && <span className="font-semibold text-slate-700">{age} yrs</span>}
+                      {patient.gender && <span>• {patient.gender}</span>}
+                      {patient.uniqueId && (
+                        <span className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-[11px] font-bold text-slate-700">
+                          {patient.uniqueId}
                         </span>
                       )}
-                    </div>
-
-                    <div className="flex items-center gap-2 text-xs text-slate-600 mt-1 flex-wrap">
-                      <span className="font-semibold text-slate-700">{patient.age} • {patient.sex}</span>
-                      <span>•</span>
-                      <span className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-[11px] font-bold text-slate-700">
-                        {patient.patientId}
-                      </span>
-                      <span>•</span>
-                      <span className="text-slate-500">{patient.community}</span>
+                      {patient.phone && <span className="text-slate-500">{patient.phone}</span>}
                     </div>
                   </div>
                 </div>
 
-                {/* Right side: Last visit & direct action */}
-                <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
-                  <div className="text-left sm:text-right">
-                    <span className="text-[11px] text-slate-400 block">Last visit</span>
-                    <span className="text-xs font-semibold text-teal-700">{patient.lastVisit}</span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onStartVisitForPatient(patient);
-                      }}
-                      className="px-3 py-1.5 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 text-xs font-semibold rounded-lg transition-colors"
-                    >
-                      New Visit
-                    </button>
-                    <ChevronRight className="w-4 h-4 text-slate-400" />
-                  </div>
+                <div className="flex items-center gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onStartVisitForPatient(patient);
+                    }}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors"
+                    style={{ backgroundColor: 'var(--color-accent-light)', color: 'var(--color-primary)', borderColor: 'var(--color-accent)' }}
+                  >
+                    New Visit
+                  </button>
+                  <ChevronRight className="w-4 h-4 text-slate-400" />
                 </div>
               </div>
             );
-          })
-        )}
-      </div>
+          })}
+        </div>
+      )}
 
       <RegisterPatientModal
         isOpen={isRegisterOpen}
