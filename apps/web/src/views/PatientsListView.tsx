@@ -44,7 +44,6 @@ export const PatientsListView: React.FC<PatientsListViewProps> = ({
   useEffect(() => {
     const handle = setTimeout(() => fetchPatients(searchQuery), searchQuery ? 300 : 0);
     return () => clearTimeout(handle);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery]);
 
   const handlePatientCreated = (newPatient: Patient) => {

@@ -16,6 +16,7 @@ import type { AttributedItem, CareNestAiResult, Patient, SourceType, Visit } fro
 import { SourceBadge } from '@/components/SourceAttributedCard';
 import { ApiError } from '@/lib/api';
 import * as visitsService from '@/services/visits.service';
+import * as followUpsService from '@/services/follow-ups.service';
 
 interface AIReviewViewProps {
   visit: Visit;
@@ -120,6 +121,23 @@ export const AIReviewView: React.FC<AIReviewViewProps> = ({ visit, patient, onBa
     setIsConfirming(true);
     try {
       const confirmed = await visitsService.confirmVisit(visit.id, draft);
+      // The CHW has reviewed and accepted whatever remains in "Suggested
+      // Follow-ups" here, so promote those to real follow-ups. Best-effort:
+      // a failure after the record is confirmed shouldn't block navigation.
+      const accepted = draft.suggestedFollowUps
+        .map((item) => item.text.trim())
+        .filter(Boolean);
+      if (accepted.length > 0) {
+        await Promise.allSettled(
+          accepted.map((summary) =>
+            followUpsService.createFollowUp({
+              patientId: patient.id,
+              visitId: visit.id,
+              summary,
+            }),
+          ),
+        );
+      }
       confetti({ particleCount: 80, spread: 65, origin: { y: 0.7 } });
       onConfirmed(confirmed);
     } catch (err) {
@@ -239,7 +257,7 @@ export const AIReviewView: React.FC<AIReviewViewProps> = ({ visit, patient, onBa
           type="button"
           onClick={handleConfirm}
           disabled={!canConfirm || isConfirming}
-          className="w-full py-3.5 px-6 rounded-xl text-white font-bold text-sm shadow-md hover:shadow-lg active:scale-[0.99] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full h-[52px] px-6 rounded-xl text-white font-bold text-sm shadow-md hover:shadow-lg active:scale-[0.99] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           style={{ backgroundColor: 'var(--color-accent)' }}
         >
           {isConfirming ? (

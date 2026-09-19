@@ -91,7 +91,7 @@ export const LoginView: React.FC = () => {
               <button
                 type="submit"
                 disabled={isLoggingIn}
-                className="w-full py-3 px-4 rounded-xl text-sm font-semibold text-white shadow-md transition-all active:scale-[0.99] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full h-[52px] px-4 rounded-xl text-sm font-semibold text-white shadow-md transition-all active:scale-[0.99] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 style={{ backgroundColor: 'var(--color-primary)' }}
               >
                 {isLoggingIn ? (

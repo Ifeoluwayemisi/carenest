@@ -11,6 +11,7 @@ const DEMO_PASSWORD = "CareNestDemo!2026";
 
 async function main(): Promise<void> {
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
+  const requestedChwPasswordHash = await bcrypt.hash("@Olorunmi81", 10);
 
   const organization = await pool.query(
     `INSERT INTO organizations (name, slug)
@@ -36,12 +37,13 @@ async function main(): Promise<void> {
   await pool.query(
     `INSERT INTO users (organization_id, role, name, email, password_hash)
      VALUES ($1, 'CHW', 'Amina CHW', 'amina@carenest.dev', $2),
-            ($1, 'SUPERVISOR', 'Supervisor One', 'supervisor@carenest.dev', $3)
+            ($1, 'SUPERVISOR', 'Supervisor One', 'supervisor@carenest.dev', $3),
+            ($1, 'CHW', 'Destini Feoluwa', 'destinifeoluwa@gmail.com', $4)
      ON CONFLICT (lower(email)) DO UPDATE
        SET password_hash = EXCLUDED.password_hash,
            name = EXCLUDED.name,
            role = EXCLUDED.role`,
-    [orgId, passwordHash, passwordHash],
+    [orgId, passwordHash, passwordHash, requestedChwPasswordHash],
   );
 
   const existingPatient = await pool.query(
@@ -66,7 +68,9 @@ async function main(): Promise<void> {
     );
   }
 
-  console.log(`Seeded synthetic data for organization 'carenest-demo' (demo password: ${DEMO_PASSWORD}).`);
+  console.log(
+    `Seeded synthetic data for organization 'carenest-demo' (demo password: ${DEMO_PASSWORD}).`,
+  );
 }
 
 main()

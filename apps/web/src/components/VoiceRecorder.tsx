@@ -121,7 +121,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
               type="button"
               onClick={startRecording}
               disabled={disabled}
-              className="w-16 h-16 rounded-full text-white flex items-center justify-center shadow-md hover:shadow-lg active:scale-95 transition-all mx-auto disabled:opacity-50"
+              className="w-18 h-18 rounded-full text-white flex items-center justify-center shadow-md hover:shadow-lg active:scale-95 transition-all mx-auto disabled:opacity-50"
               style={{ backgroundColor: 'var(--color-accent)' }}
               aria-label="Tap to speak"
             >
@@ -141,7 +141,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
             <button
               type="button"
               onClick={stopRecording}
-              className="w-16 h-16 rounded-full bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center shadow-lg active:scale-95 transition-all mx-auto animate-pulse"
+              className="w-18 h-18 rounded-full bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center shadow-lg active:scale-95 transition-all mx-auto animate-pulse"
               aria-label="Stop recording"
             >
               <Square className="w-6 h-6 fill-current" />
@@ -160,7 +160,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
         {!isRecording && hasRecording && (
           <div className="text-center space-y-3">
             <div
-              className="w-16 h-16 rounded-full flex items-center justify-center mx-auto"
+              className="w-18 h-18 rounded-full flex items-center justify-center mx-auto"
               style={{ backgroundColor: 'var(--color-online-bg)', color: 'var(--color-online-text)' }}
             >
               <Mic className="w-8 h-8" />
