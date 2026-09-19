@@ -1,0 +1,18 @@
+{
+  "name": "CareNest — Field Care Documentation",
+  "short_name": "CareNest",
+  "description": "AI-assisted field documentation and care continuity for Community Health Workers",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#0f766e",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
