@@ -182,27 +182,38 @@ class StorageService {
   private listeners: (() => void)[] = [];
 
   constructor() {
-    this.init();
+    if (typeof window !== 'undefined') {
+      this.init();
+    }
+  }
+
+  private isClient(): boolean {
+    return typeof window !== 'undefined' && typeof localStorage !== 'undefined';
   }
 
   private init() {
-    if (!localStorage.getItem(STORAGE_KEYS.PATIENTS)) {
-      localStorage.setItem(STORAGE_KEYS.PATIENTS, JSON.stringify(SEED_PATIENTS));
-    }
-    if (!localStorage.getItem(STORAGE_KEYS.ENCOUNTERS)) {
-      localStorage.setItem(STORAGE_KEYS.ENCOUNTERS, JSON.stringify(SEED_ENCOUNTERS));
-    }
-    if (!localStorage.getItem(STORAGE_KEYS.REFERRALS)) {
-      localStorage.setItem(STORAGE_KEYS.REFERRALS, JSON.stringify(SEED_REFERRALS));
-    }
-    if (!localStorage.getItem(STORAGE_KEYS.FOLLOW_UPS)) {
-      localStorage.setItem(STORAGE_KEYS.FOLLOW_UPS, JSON.stringify(SEED_FOLLOW_UPS));
-    }
-    if (localStorage.getItem(STORAGE_KEYS.NETWORK_STATUS) === null) {
-      localStorage.setItem(STORAGE_KEYS.NETWORK_STATUS, 'true'); // Online by default
-    }
-    if (!localStorage.getItem(STORAGE_KEYS.CURRENT_USER)) {
-      localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(DEFAULT_USER));
+    if (!this.isClient()) return;
+    try {
+      if (!localStorage.getItem(STORAGE_KEYS.PATIENTS)) {
+        localStorage.setItem(STORAGE_KEYS.PATIENTS, JSON.stringify(SEED_PATIENTS));
+      }
+      if (!localStorage.getItem(STORAGE_KEYS.ENCOUNTERS)) {
+        localStorage.setItem(STORAGE_KEYS.ENCOUNTERS, JSON.stringify(SEED_ENCOUNTERS));
+      }
+      if (!localStorage.getItem(STORAGE_KEYS.REFERRALS)) {
+        localStorage.setItem(STORAGE_KEYS.REFERRALS, JSON.stringify(SEED_REFERRALS));
+      }
+      if (!localStorage.getItem(STORAGE_KEYS.FOLLOW_UPS)) {
+        localStorage.setItem(STORAGE_KEYS.FOLLOW_UPS, JSON.stringify(SEED_FOLLOW_UPS));
+      }
+      if (localStorage.getItem(STORAGE_KEYS.NETWORK_STATUS) === null) {
+        localStorage.setItem(STORAGE_KEYS.NETWORK_STATUS, 'true'); // Online by default
+      }
+      if (!localStorage.getItem(STORAGE_KEYS.CURRENT_USER)) {
+        localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(DEFAULT_USER));
+      }
+    } catch {
+      // Storage unavailable or quota exceeded
     }
   }
 
@@ -219,13 +230,14 @@ class StorageService {
 
   // Network status simulation
   isOnline(): boolean {
+    if (!this.isClient()) return true;
     return localStorage.getItem(STORAGE_KEYS.NETWORK_STATUS) !== 'false';
   }
 
   setOnlineStatus(online: boolean) {
+    if (!this.isClient()) return;
     localStorage.setItem(STORAGE_KEYS.NETWORK_STATUS, online ? 'true' : 'false');
     if (online) {
-      // Automatically sync any pending records
       this.syncPendingRecords();
     }
     this.notify();
@@ -239,6 +251,7 @@ class StorageService {
 
   // Patients
   getPatients(): Patient[] {
+    if (!this.isClient()) return SEED_PATIENTS;
     try {
       const data = localStorage.getItem(STORAGE_KEYS.PATIENTS);
       return data ? JSON.parse(data) : SEED_PATIENTS;
@@ -260,13 +273,16 @@ class StorageService {
       registeredAt: new Date().toISOString().split('T')[0],
     };
     patients.unshift(newPatient);
-    localStorage.setItem(STORAGE_KEYS.PATIENTS, JSON.stringify(patients));
+    if (this.isClient()) {
+      localStorage.setItem(STORAGE_KEYS.PATIENTS, JSON.stringify(patients));
+    }
     this.notify();
     return newPatient;
   }
 
   // Encounters
   getEncounters(): Encounter[] {
+    if (!this.isClient()) return SEED_ENCOUNTERS;
     try {
       const data = localStorage.getItem(STORAGE_KEYS.ENCOUNTERS);
       return data ? JSON.parse(data) : SEED_ENCOUNTERS;
@@ -292,14 +308,18 @@ class StorageService {
       createdAt: new Date().toISOString(),
     };
     encounters.unshift(newEncounter);
-    localStorage.setItem(STORAGE_KEYS.ENCOUNTERS, JSON.stringify(encounters));
+    if (this.isClient()) {
+      localStorage.setItem(STORAGE_KEYS.ENCOUNTERS, JSON.stringify(encounters));
+    }
 
     // Update patient's last visit
     const patients = this.getPatients();
     const patientIndex = patients.findIndex(p => p.id === encounter.patientId);
     if (patientIndex >= 0) {
       patients[patientIndex].lastVisit = 'Today';
-      localStorage.setItem(STORAGE_KEYS.PATIENTS, JSON.stringify(patients));
+      if (this.isClient()) {
+        localStorage.setItem(STORAGE_KEYS.PATIENTS, JSON.stringify(patients));
+      }
     }
 
     this.notify();
@@ -308,6 +328,7 @@ class StorageService {
 
   // Referrals
   getReferrals(): Referral[] {
+    if (!this.isClient()) return SEED_REFERRALS;
     try {
       const data = localStorage.getItem(STORAGE_KEYS.REFERRALS);
       return data ? JSON.parse(data) : SEED_REFERRALS;
@@ -332,7 +353,9 @@ class StorageService {
       createdAt: new Date().toISOString(),
     };
     referrals.unshift(newReferral);
-    localStorage.setItem(STORAGE_KEYS.REFERRALS, JSON.stringify(referrals));
+    if (this.isClient()) {
+      localStorage.setItem(STORAGE_KEYS.REFERRALS, JSON.stringify(referrals));
+    }
     this.notify();
     return newReferral;
   }
@@ -344,7 +367,9 @@ class StorageService {
       referrals[index].status = 'received';
       referrals[index].receivedAt = new Date().toISOString();
       referrals[index].receivedBy = receivedBy;
-      localStorage.setItem(STORAGE_KEYS.REFERRALS, JSON.stringify(referrals));
+      if (this.isClient()) {
+        localStorage.setItem(STORAGE_KEYS.REFERRALS, JSON.stringify(referrals));
+      }
       this.notify();
       return referrals[index];
     }
@@ -353,6 +378,7 @@ class StorageService {
 
   // Follow-ups
   getFollowUps(): FollowUpItem[] {
+    if (!this.isClient()) return SEED_FOLLOW_UPS;
     try {
       const data = localStorage.getItem(STORAGE_KEYS.FOLLOW_UPS);
       return data ? JSON.parse(data) : SEED_FOLLOW_UPS;
@@ -366,7 +392,9 @@ class StorageService {
     const item = followUps.find(f => f.id === id);
     if (item) {
       item.completed = !item.completed;
-      localStorage.setItem(STORAGE_KEYS.FOLLOW_UPS, JSON.stringify(followUps));
+      if (this.isClient()) {
+        localStorage.setItem(STORAGE_KEYS.FOLLOW_UPS, JSON.stringify(followUps));
+      }
       this.notify();
     }
   }
@@ -386,7 +414,7 @@ class StorageService {
         count++;
       }
     });
-    if (count > 0) {
+    if (count > 0 && this.isClient()) {
       localStorage.setItem(STORAGE_KEYS.ENCOUNTERS, JSON.stringify(encounters));
       this.notify();
     }
@@ -394,6 +422,7 @@ class StorageService {
   }
 
   resetDemoData() {
+    if (!this.isClient()) return;
     localStorage.setItem(STORAGE_KEYS.PATIENTS, JSON.stringify(SEED_PATIENTS));
     localStorage.setItem(STORAGE_KEYS.ENCOUNTERS, JSON.stringify(SEED_ENCOUNTERS));
     localStorage.setItem(STORAGE_KEYS.REFERRALS, JSON.stringify(SEED_REFERRALS));
