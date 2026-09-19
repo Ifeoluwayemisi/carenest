@@ -4,10 +4,8 @@ import {
   Users, 
   PlusCircle, 
   CalendarClock, 
-  Share2, 
   ShieldCheck, 
   Settings, 
-  QrCode,
   LogOut 
 } from 'lucide-react';
 
@@ -28,8 +26,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'home', label: 'Dashboard', icon: Home },
     { id: 'patients', label: 'Patients', icon: Users },
     { id: 'follow-ups', label: 'Follow-ups', icon: CalendarClock },
-    { id: 'referrals', label: 'Referrals & Care Pass', icon: Share2 },
-    { id: 'receiving-facility', label: 'Receiving Facility', icon: QrCode },
     { id: 'supervisor', label: 'Supervisor View', icon: ShieldCheck },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
@@ -42,7 +38,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             type="button"
             onClick={onOpenNewVisit}
-            className="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold text-sm py-2.5 px-4 rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+            className="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold text-sm py-2.5 px-4 rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer"
           >
             <PlusCircle className="w-5 h-5" />
             <span>+ New Patient Visit</span>
@@ -54,15 +50,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentView === item.id || 
-              (item.id === 'patients' && currentView === 'patient-profile') ||
-              (item.id === 'referrals' && currentView === 'care-pass');
+              (item.id === 'patients' && currentView === 'patient-profile');
 
             return (
               <button
                 key={item.id}
                 type="button"
                 onClick={() => onNavigate(item.id)}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors text-left ${
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors text-left cursor-pointer ${
                   isActive
                     ? 'bg-teal-50 text-teal-800 font-semibold'
                     : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
@@ -85,7 +80,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <button
           type="button"
           onClick={onSignOut}
-          className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-500 hover:text-rose-600 rounded-lg transition-colors"
+          className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-500 hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
         >
           <LogOut className="w-4 h-4" />
           <span>Sign Out</span>

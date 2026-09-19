@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Users, Plus, Share2, Menu } from 'lucide-react';
+import { Home, Users, Plus, CalendarClock, Menu } from 'lucide-react';
 
 interface BottomNavProps {
   currentView: string;
@@ -21,7 +21,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         <button
           type="button"
           onClick={() => onNavigate('home')}
-          className={`flex flex-col items-center justify-center flex-1 py-1 ${
+          className={`flex flex-col items-center justify-center flex-1 py-1 cursor-pointer ${
             currentView === 'home' ? 'text-teal-700 font-semibold' : 'text-slate-500 hover:text-slate-800'
           }`}
         >
@@ -33,7 +33,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         <button
           type="button"
           onClick={() => onNavigate('patients')}
-          className={`flex flex-col items-center justify-center flex-1 py-1 ${
+          className={`flex flex-col items-center justify-center flex-1 py-1 cursor-pointer ${
             currentView === 'patients' || currentView === 'patient-profile'
               ? 'text-teal-700 font-semibold'
               : 'text-slate-500 hover:text-slate-800'
@@ -48,33 +48,33 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           <button
             type="button"
             onClick={onOpenNewVisit}
-            className="w-13 h-13 rounded-full bg-teal-600 hover:bg-teal-700 text-white flex flex-col items-center justify-center shadow-lg border-2 border-white active:scale-95 transition-transform"
+            className="w-13 h-13 rounded-full bg-teal-600 hover:bg-teal-700 text-white flex flex-col items-center justify-center shadow-lg border-2 border-white active:scale-95 transition-transform cursor-pointer"
             aria-label="New Visit"
           >
             <Plus className="w-6 h-6 stroke-[2.5]" />
           </button>
         </div>
 
-        {/* Referrals */}
+        {/* Follow-ups */}
         <button
           type="button"
-          onClick={() => onNavigate('referrals')}
-          className={`flex flex-col items-center justify-center flex-1 py-1 ${
-            currentView === 'referrals' || currentView === 'care-pass'
+          onClick={() => onNavigate('follow-ups')}
+          className={`flex flex-col items-center justify-center flex-1 py-1 cursor-pointer ${
+            currentView === 'follow-ups'
               ? 'text-teal-700 font-semibold'
               : 'text-slate-500 hover:text-slate-800'
           }`}
         >
-          <Share2 className="w-5 h-5 mb-0.5" />
-          <span className="text-[10px]">Referrals</span>
+          <CalendarClock className="w-5 h-5 mb-0.5" />
+          <span className="text-[10px]">Follow-ups</span>
         </button>
 
         {/* More Menu */}
         <button
           type="button"
           onClick={onOpenMoreMenu}
-          className={`flex flex-col items-center justify-center flex-1 py-1 ${
-            ['follow-ups', 'supervisor', 'settings', 'receiving-facility'].includes(currentView)
+          className={`flex flex-col items-center justify-center flex-1 py-1 cursor-pointer ${
+            ['supervisor', 'settings'].includes(currentView)
               ? 'text-teal-700 font-semibold'
               : 'text-slate-500 hover:text-slate-800'
           }`}

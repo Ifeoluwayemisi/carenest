@@ -4,11 +4,8 @@ import {
   Search, 
   Users, 
   Clock, 
-  Share2, 
   CloudOff, 
-  CheckCircle2, 
   ChevronRight, 
-  AlertCircle,
   Activity,
   ArrowUpRight
 } from 'lucide-react';
@@ -86,7 +83,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {isOnline ? (
             <button
               onClick={() => storage.syncPendingRecords()}
-              className="px-3.5 py-1.5 bg-amber-700 hover:bg-amber-800 text-white text-xs font-semibold rounded-lg shadow-sm transition-all"
+              className="px-3.5 py-1.5 bg-amber-700 hover:bg-amber-800 text-white text-xs font-semibold rounded-lg shadow-sm transition-all cursor-pointer"
             >
               Sync Now
             </button>
@@ -103,7 +100,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <button
           type="button"
           onClick={() => {
-            // Find Maria Okafor by default for the primary story
             const maria = storage.getPatient('pat-001') || patients[0];
             onStartNewVisit(maria);
           }}
@@ -150,7 +146,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </div>
 
       {/* Metrics Row */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between text-slate-500 mb-1">
             <span className="text-xs font-medium">Today's Visits</span>
@@ -181,19 +177,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="text-[10px] text-amber-700 font-medium mt-0.5">1 due this week</div>
         </div>
 
-        <div 
-          onClick={() => onNavigate('referrals')}
-          className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm cursor-pointer hover:border-teal-300 transition-colors"
-        >
-          <div className="flex items-center justify-between text-slate-500 mb-1">
-            <span className="text-xs font-medium">Referrals</span>
-            <Share2 className="w-4 h-4 text-indigo-600" />
-          </div>
-          <div className="text-2xl font-bold text-slate-900">2</div>
-          <div className="text-[10px] text-indigo-700 font-medium mt-0.5">1 Care Pass active</div>
-        </div>
-
-        <div className="col-span-2 sm:col-span-1 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between text-slate-500 mb-1">
             <span className="text-xs font-medium">Unsynced</span>
             <CloudOff className="w-4 h-4 text-slate-600" />
@@ -215,7 +199,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <button
             type="button"
             onClick={onNavigateToPatients}
-            className="text-xs font-semibold text-teal-700 hover:text-teal-800 flex items-center gap-1"
+            className="text-xs font-semibold text-teal-700 hover:text-teal-800 flex items-center gap-1 cursor-pointer"
           >
             View all ({patients.length})
             <ChevronRight className="w-3.5 h-3.5" />

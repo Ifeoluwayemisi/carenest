@@ -2,34 +2,24 @@ import React, { useState } from 'react';
 import { 
   ArrowLeft, 
   Plus, 
-  Share2, 
-  Clock, 
-  CheckCircle2, 
   ChevronDown, 
   ChevronUp, 
-  Heart, 
   Calendar, 
-  MapPin, 
-  Phone, 
-  FileText,
-  ShieldCheck,
-  AlertCircle
+  ShieldCheck
 } from 'lucide-react';
-import { Patient, Encounter } from '../types';
+import { Patient } from '../types';
 import { storage } from '../services/storage';
 
 interface PatientProfileViewProps {
   patient: Patient;
   onBack: () => void;
   onStartNewVisit: (patient: Patient) => void;
-  onReferPatient: (patient: Patient) => void;
 }
 
 export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
   patient,
   onBack,
   onStartNewVisit,
-  onReferPatient,
 }) => {
   const encounters = storage.getPatientEncounters(patient.id);
   const [expandedEncounterId, setExpandedEncounterId] = useState<string | null>(
@@ -84,24 +74,15 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
             </div>
           </div>
 
-          {/* Action CTAs */}
+          {/* Action CTAs: New Visit */}
           <div className="flex items-center gap-2.5 pt-2 sm:pt-0">
             <button
               type="button"
               onClick={() => onStartNewVisit(patient)}
-              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-sm transition-all active:scale-[0.98] cursor-pointer"
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-sm transition-all active:scale-[0.98] cursor-pointer"
             >
               <Plus className="w-4 h-4 stroke-[2.5]" />
-              <span>New Visit</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => onReferPatient(patient)}
-              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-sm transition-all active:scale-[0.98] cursor-pointer"
-            >
-              <Share2 className="w-4 h-4" />
-              <span>Refer Patient</span>
+              <span>+ Record New Visit</span>
             </button>
           </div>
         </div>
@@ -201,18 +182,15 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
 
             return (
               <div key={encounter.id} className="relative group">
-                {/* Timeline node icon */}
                 <div className={`absolute -left-6 sm:-left-8 top-1 w-5 h-5 sm:w-7 sm:h-7 rounded-full flex items-center justify-center border-2 border-white shadow-xs ${
                   isLatest ? 'bg-teal-600 text-white ring-4 ring-teal-100' : 'bg-slate-200 text-slate-600'
                 }`}>
                   <Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                 </div>
 
-                {/* Encounter Card */}
                 <div className={`rounded-xl border transition-all ${
                   isLatest ? 'border-teal-300 bg-teal-50/10' : 'border-slate-200 bg-white'
                 }`}>
-                  {/* Card Header (clickable) */}
                   <div
                     onClick={() => toggleExpand(encounter.id)}
                     className="p-4 flex items-center justify-between cursor-pointer select-none"
@@ -249,10 +227,8 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                     </div>
                   </div>
 
-                  {/* Expanded Details */}
                   {isExpanded && (
                     <div className="px-4 pb-4 pt-2 border-t border-slate-100 space-y-3 text-xs">
-                      {/* Vitals Summary */}
                       {encounter.chwObservations.vitals && (
                         <div className="bg-slate-50 p-3 rounded-lg flex items-center gap-4 flex-wrap border border-slate-100">
                           <span className="font-semibold text-slate-700">Vitals Recorded:</span>
@@ -268,7 +244,6 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                         </div>
                       )}
 
-                      {/* Patient Reported Details */}
                       <div>
                         <span className="font-bold text-slate-700 block mb-1">Patient-reported Notes:</span>
                         <p className="text-slate-600 leading-relaxed">
@@ -276,7 +251,6 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                         </p>
                       </div>
 
-                      {/* CHW Observation */}
                       <div>
                         <span className="font-bold text-slate-700 block mb-1">CHW Field Observations:</span>
                         <p className="text-slate-600 leading-relaxed">
@@ -284,7 +258,6 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                         </p>
                       </div>
 
-                      {/* Follow-up / Continuity */}
                       {encounter.followUp && (
                         <div className="bg-teal-50/50 p-2.5 rounded-lg border border-teal-100">
                           <span className="font-bold text-teal-900 block mb-0.5">Follow-up Plan:</span>
@@ -295,7 +268,6 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                         </div>
                       )}
 
-                      {/* Verification Signature */}
                       <div className="pt-2 flex items-center justify-between text-[11px] text-slate-400">
                         <div className="flex items-center gap-1 text-emerald-700 font-medium">
                           <ShieldCheck className="w-3.5 h-3.5" />

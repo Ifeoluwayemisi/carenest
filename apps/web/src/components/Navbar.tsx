@@ -1,5 +1,5 @@
 import React from 'react';
-import { Wifi, WifiOff, RefreshCw, Building2, User, Activity, QrCode } from 'lucide-react';
+import { Wifi, WifiOff, RefreshCw, Building2, Activity } from 'lucide-react';
 import { storage } from '../services/storage';
 
 interface NavbarProps {
@@ -21,7 +21,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-sm safe-top">
       {/* Top Banner / Facility bar */}
-      <div className="bg-slate-900 text-slate-200 px-4 py-1 text-xs flex items-center justify-between">
+      <div className="bg-slate-900 text-slate-200 px-4 py-1.5 text-xs flex items-center justify-between">
         <div className="flex items-center gap-1.5 truncate">
           <Building2 className="w-3.5 h-3.5 text-teal-400 shrink-0" />
           <span className="font-medium text-slate-100 truncate">Ajegunle Community Health Centre</span>
@@ -29,20 +29,9 @@ export const Navbar: React.FC<NavbarProps> = ({
           <span className="text-slate-400 hidden sm:inline">Facility ID: AJG-CHC-04</span>
         </div>
 
-        {/* Quick Portal Switcher for demo ease */}
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={() => onNavigate(currentView === 'receiving-facility' ? 'home' : 'receiving-facility')}
-            className={`text-[11px] px-2 py-0.5 rounded font-medium transition-colors flex items-center gap-1 ${
-              currentView === 'receiving-facility'
-                ? 'bg-teal-500 text-slate-950 font-bold'
-                : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-            }`}
-            title="Switch to receiving facility doctor view"
-          >
-            <QrCode className="w-3 h-3" />
-            <span className="hidden xs:inline">{currentView === 'receiving-facility' ? 'Return to CHW' : 'Receiving Facility'}</span>
-          </button>
+        <div className="flex items-center gap-2 shrink-0 text-slate-400 text-[11px]">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+          <span>CHW Field Workspace</span>
         </div>
       </div>
 
@@ -63,7 +52,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 Field PWA
               </span>
             </div>
-            <p className="text-[10px] text-slate-500 hidden sm:block -mt-0.5">Your patient's story, carried forward</p>
+            <p className="text-[10px] text-slate-500 hidden sm:block -mt-0.5">Care in the field, captured in words</p>
           </div>
         </div>
 
@@ -117,7 +106,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* CHW Profile Button */}
           <button
             onClick={() => onNavigate('settings')}
-            className="flex items-center gap-2 pl-2 border-l border-slate-200 text-slate-700 hover:text-slate-900"
+            className="flex items-center gap-2 pl-2 border-l border-slate-200 text-slate-700 hover:text-slate-900 cursor-pointer"
           >
             <div className="w-7 h-7 rounded-full bg-teal-100 text-teal-800 flex items-center justify-center text-xs font-bold border border-teal-200">
               AB

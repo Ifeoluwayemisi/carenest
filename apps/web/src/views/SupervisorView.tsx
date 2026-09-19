@@ -4,10 +4,7 @@ import {
   Users, 
   Activity, 
   CalendarClock, 
-  Share2, 
-  CloudOff, 
-  Building2, 
-  CheckCircle2 
+  CloudOff 
 } from 'lucide-react';
 import { storage } from '../services/storage';
 
@@ -33,7 +30,7 @@ export const SupervisorView: React.FC = () => {
               Facility Supervisor Overview
             </h1>
             <span className="text-[10px] uppercase font-bold tracking-wider bg-slate-100 text-slate-700 px-2 py-0.5 rounded">
-              Secondary View
+              Supervisor Area
             </span>
           </div>
           <p className="text-xs sm:text-sm text-slate-500">
@@ -48,7 +45,7 @@ export const SupervisorView: React.FC = () => {
       </div>
 
       {/* Aggregate Metric Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between text-slate-500 mb-1">
             <span className="text-xs font-medium">Active CHWs</span>
@@ -78,19 +75,10 @@ export const SupervisorView: React.FC = () => {
 
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between text-slate-500 mb-1">
-            <span className="text-xs font-medium">Active Referrals</span>
-            <Share2 className="w-4 h-4 text-indigo-600" />
-          </div>
-          <div className="text-2xl font-bold text-slate-900">2</div>
-          <div className="text-[10px] text-indigo-700 font-semibold mt-0.5">General Hospital</div>
-        </div>
-
-        <div className="col-span-2 sm:col-span-1 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 mb-1">
             <span className="text-xs font-medium">Unsynced Records</span>
             <CloudOff className="w-4 h-4 text-slate-600" />
           </div>
-          <div className="text-2xl font-bold text-slate-900">{unsynced || 1}</div>
+          <div className="text-2xl font-bold text-slate-900">{unsynced}</div>
           <div className="text-[10px] text-slate-500 mt-0.5">Awaiting connectivity</div>
         </div>
       </div>

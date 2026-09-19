@@ -14,18 +14,13 @@ import { NewVisitView } from '../views/NewVisitView';
 import { AIProcessingModal } from '../views/AIProcessingModal';
 import { StructuredDraftView } from '../views/StructuredDraftView';
 import { ReviewConfirmView } from '../views/ReviewConfirmView';
-import { ReferralCreateView } from '../views/ReferralCreateView';
-import { AIReferralSummaryView } from '../views/AIReferralSummaryView';
-import { CarePassView } from '../views/CarePassView';
-import { ReceivingFacilityView } from '../views/ReceivingFacilityView';
 import { FollowUpsView } from '../views/FollowUpsView';
-import { ReferralsListView } from '../views/ReferralsListView';
 import { SupervisorView } from '../views/SupervisorView';
 import { SettingsView } from '../views/SettingsView';
 
 import { storage, DEFAULT_USER } from '../services/storage';
 import { AIService, ExtractedEncounterDraft } from '../services/aiService';
-import { Patient, Vitals, Referral } from '../types';
+import { Patient, Vitals } from '../types';
 
 export function CareNestApp() {
   const [mounted, setMounted] = useState(false);
@@ -41,12 +36,6 @@ export function CareNestApp() {
   const [pendingRawNotes, setPendingRawNotes] = useState('');
   const [pendingInputMethod, setPendingInputMethod] = useState<'voice' | 'text'>('voice');
 
-  const [referralTargetFacility, setReferralTargetFacility] = useState('General Hospital');
-  const [referralReason, setReferralReason] = useState('');
-  const [referralNarrativeSummary, setReferralNarrativeSummary] = useState('');
-  const [activeCarePass, setActiveCarePass] = useState<Referral | null>(null);
-
-  const [receivingLookupCode, setReceivingLookupCode] = useState<string>('REF-10281');
   const [showMoreMenu, setShowMoreMenu] = useState(false);
 
   useEffect(() => {
@@ -68,7 +57,7 @@ export function CareNestApp() {
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="text-center space-y-2">
           <div className="w-10 h-10 border-3 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-xs font-semibold text-slate-600">Loading CareNest Workspace...</p>
+          <p className="text-xs font-semibold text-slate-600">Loading CareNest Field Workspace...</p>
         </div>
       </div>
     );
@@ -129,61 +118,6 @@ export function CareNestApp() {
     if (refreshed) setActivePatient(refreshed);
 
     setCurrentView('patient-profile');
-  };
-
-  const handleReferPatient = (patient: Patient) => {
-    setActivePatient(patient);
-    setCurrentView('referral-create');
-  };
-
-  const handleGenerateReferralSummary = (targetFacility: string, reason: string) => {
-    setReferralTargetFacility(targetFacility);
-    setReferralReason(reason);
-
-    const summary = AIService.generateReferralSummary(
-      activePatient.name,
-      activePatient.age,
-      activePatient.sex,
-      DEFAULT_USER.facilityName,
-      targetFacility,
-      reason,
-      ['Headache for three days', 'Difficulty obtaining medication'],
-      { temperature: 37.4, bloodPressure: '130/85', pulse: 76 },
-      'Sept 05, 2026'
-    );
-
-    setReferralNarrativeSummary(summary);
-    setCurrentView('referral-summary');
-  };
-
-  const handleConfirmReferral = (data: { receivingFacility: string; reason: string; summary: string }) => {
-    const newRef = storage.createReferral({
-      patientId: activePatient.id,
-      patientName: activePatient.name,
-      patientAge: activePatient.age,
-      patientSex: activePatient.sex,
-      referringFacility: DEFAULT_USER.facilityName,
-      receivingFacility: data.receivingFacility,
-      chwName: DEFAULT_USER.name,
-      reason: data.reason,
-      relevantHistory: `Patient has reported recurring headaches over the past 3 days and difficulty accessing regular hypertension medication. Past community visit on Sept 05 noted medication supply interruption.`,
-      symptomsReported: ['Headache for three days', 'Difficulty obtaining medication'],
-      recordedObservations: {
-        vitals: { temperature: 37.4, bloodPressure: '130/85', pulse: 76 },
-        notes: 'Elevated blood pressure observed during field visit. Temperature mildly elevated.',
-      },
-      previousEncounterDate: 'Sept 05, 2026',
-      referralSummary: data.summary,
-    });
-
-    setActiveCarePass(newRef);
-    setReceivingLookupCode(newRef.referralCode);
-    setCurrentView('care-pass');
-  };
-
-  const handleNavigateToReceiving = (referralCode: string) => {
-    setReceivingLookupCode(referralCode);
-    setCurrentView('receiving-facility');
   };
 
   const handleResetData = () => {
@@ -252,7 +186,6 @@ export function CareNestApp() {
               patient={activePatient}
               onBack={() => setCurrentView('patients')}
               onStartNewVisit={handleStartNewVisit}
-              onReferPatient={handleReferPatient}
             />
           )}
 
@@ -283,59 +216,12 @@ export function CareNestApp() {
             />
           )}
 
-          {currentView === 'referral-create' && (
-            <ReferralCreateView
-              patient={activePatient}
-              onBack={() => setCurrentView('patient-profile')}
-              onGenerateSummary={handleGenerateReferralSummary}
-            />
-          )}
-
-          {currentView === 'referral-summary' && (
-            <AIReferralSummaryView
-              patient={activePatient}
-              receivingFacility={referralTargetFacility}
-              reason={referralReason}
-              symptomsReported={['Headache for three days', 'Difficulty obtaining medication']}
-              recordedVitals={{ temperature: 37.4, bloodPressure: '130/85', pulse: 76 }}
-              previousEncounterDate="Sept 05, 2026"
-              generatedSummary={referralNarrativeSummary}
-              onBack={() => setCurrentView('referral-create')}
-              onConfirmReferral={handleConfirmReferral}
-            />
-          )}
-
-          {currentView === 'care-pass' && activeCarePass && (
-            <CarePassView
-              referral={activeCarePass}
-              onDone={() => setCurrentView('home')}
-              onNavigateToReceiving={handleNavigateToReceiving}
-            />
-          )}
-
-          {currentView === 'receiving-facility' && (
-            <ReceivingFacilityView
-              initialCode={receivingLookupCode}
-              onBackToCHW={() => setCurrentView('home')}
-            />
-          )}
-
           {currentView === 'follow-ups' && (
             <FollowUpsView
               onSelectPatient={(p) => {
                 setActivePatient(p);
                 setCurrentView('patient-profile');
               }}
-            />
-          )}
-
-          {currentView === 'referrals' && (
-            <ReferralsListView
-              onOpenCarePass={(ref) => {
-                setActiveCarePass(ref);
-                setCurrentView('care-pass');
-              }}
-              onNavigateToReceiving={handleNavigateToReceiving}
             />
           )}
 
@@ -383,17 +269,6 @@ export function CareNestApp() {
             >
               <span>Pending Follow-ups</span>
               <span className="text-teal-700 font-bold">3 Due</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setCurrentView('receiving-facility');
-                setShowMoreMenu(false);
-              }}
-              className="w-full text-left py-3 px-4 rounded-xl bg-slate-50 hover:bg-slate-100 font-semibold text-xs text-slate-800 flex items-center justify-between"
-            >
-              <span>Receiving Facility Portal</span>
-              <span className="text-xs text-teal-800">Hospital Intake</span>
             </button>
 
             <button
